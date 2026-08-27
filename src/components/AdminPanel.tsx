@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Dessert, Category, Review, OrderVerification, StoreConfig } from '../types';
+import { Dessert, Category, Review, OrderVerification, StoreConfig, HeroShowcaseCard } from '../types';
 import {
   Plus, Edit3, Trash2, Image as ImageIcon, Upload, Check, Lock,
   Eye, LogOut, Sparkles, AlertCircle, ArrowLeft, Key,
   Share2, CheckCircle2, DollarSign, Tag, RefreshCw, X, Shield, Cloud,
   Star, MessageSquare, Ticket, Copy, Send, Camera, ShieldCheck, Search, Filter,
-  Loader2, Store, Megaphone, Phone, MapPin, Sliders, Heart
+  Loader2, Store, Megaphone, Phone, MapPin, Sliders, Heart, ChevronUp, ChevronDown,
+  Layers, Palette
 } from 'lucide-react';
 import {
   getStoredDesserts, addDessertToCloud, updateDessertInCloud, deleteDessertFromCloud,
@@ -18,7 +19,7 @@ import {
   fetchAllOrderCodesFromCloud
 } from '../utils/reviewsStorage';
 import {
-  DEFAULT_STORE_CONFIG, getStoredStoreConfig, updateStoreConfigInCloud,
+  DEFAULT_STORE_CONFIG, DEFAULT_HERO_CARDS, getStoredStoreConfig, updateStoreConfigInCloud,
   resetStoreConfigInCloud, subscribeToStoreConfig
 } from '../utils/storeConfigStorage';
 import { BAKERY_NAME, BAKERY_PHONE_FORMATTED, BAKERY_PHONE_NUMBER } from '../data/desserts';
@@ -458,6 +459,95 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // State for card image uploading
+  const [uploadingHeroCardId, setUploadingHeroCardId] = useState<string | null>(null);
+
+  // Hero Cards Management Handlers
+  const handleAddHeroCard = () => {
+    const newCard: HeroShowcaseCard = {
+      id: `hero-card-${Date.now()}`,
+      name: 'Nuevo Postre Destacado',
+      description: 'Descripción atractiva de este exquisito postre artesanal.',
+      image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=85',
+      rating: 5.0,
+      portion: 'Porción Generosa',
+      price: 10.00,
+      originalPrice: 12.00,
+      buttonText: 'Pedir Postre',
+      accentColor: 'rose',
+    };
+    const currentCards = formConfig.heroCards || DEFAULT_HERO_CARDS;
+    setFormConfig({
+      ...formConfig,
+      heroCards: [...currentCards, newCard],
+    });
+    showSuccessToast('¡Tarjeta agregada!', 'Personaliza los datos y haz clic en Guardar Cambios.');
+  };
+
+  const handleRemoveHeroCard = (cardId: string) => {
+    const currentCards = formConfig.heroCards || DEFAULT_HERO_CARDS;
+    if (currentCards.length <= 1) {
+      showErrorToast('Mínimo 1 tarjeta', 'Debes mantener al menos 1 tarjeta en la vitrina de la portada.');
+      return;
+    }
+    setFormConfig({
+      ...formConfig,
+      heroCards: currentCards.filter((c) => c.id !== cardId),
+    });
+    showSuccessToast('Tarjeta eliminada', 'Recuerda hacer clic en "Guardar Cambios" para sincronizar.');
+  };
+
+  const handleUpdateHeroCard = (cardId: string, updates: Partial<HeroShowcaseCard>) => {
+    const currentCards = formConfig.heroCards || DEFAULT_HERO_CARDS;
+    setFormConfig({
+      ...formConfig,
+      heroCards: currentCards.map((c) => (c.id === cardId ? { ...c, ...updates } : c)),
+    });
+  };
+
+  const handleMoveHeroCard = (index: number, direction: 'up' | 'down') => {
+    const currentCards = [...(formConfig.heroCards || DEFAULT_HERO_CARDS)];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentCards.length) return;
+    const temp = currentCards[index];
+    currentCards[index] = currentCards[targetIndex];
+    currentCards[targetIndex] = temp;
+    setFormConfig({ ...formConfig, heroCards: currentCards });
+  };
+
+  const handleHeroCardImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, cardId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingHeroCardId(cardId);
+      showLoadingToast('Optimizando foto para portada...', 'Procesando y comprimiendo imagen...');
+      const compressedBase64 = await optimizeImageFile(file, 900, 0.85);
+      handleUpdateHeroCard(cardId, { image: compressedBase64 });
+      showSuccessToast('¡Foto cargada!', 'La imagen se actualizó en la tarjeta de portada.');
+    } catch (err) {
+      console.error('Error al subir foto de portada:', err);
+      showErrorToast('Error con la imagen', 'No se pudo procesar la foto.');
+    } finally {
+      setUploadingHeroCardId(null);
+    }
+  };
+
+  const handleCopyFromCatalogDessert = (cardId: string, dessertId: string) => {
+    const dessert = desserts.find((d) => d.id === dessertId);
+    if (!dessert) return;
+    handleUpdateHeroCard(cardId, {
+      name: dessert.name,
+      description: dessert.shortDescription || dessert.fullDescription,
+      image: dessert.image,
+      price: dessert.price,
+      originalPrice: dessert.originalPrice || Number((dessert.price + 2).toFixed(2)),
+      rating: dessert.rating || 5.0,
+      portion: dessert.servings ? (dessert.servings.includes('generosa') ? 'Porción Generosa' : dessert.servings) : 'Porción Generosa',
+      buttonText: `Pedir ${dessert.name.replace(/^(Torta|Crema|Cheesecake|Pie|Tarta)\s+(de\s+)?/i, '')}`,
+    });
+    showSuccessToast('¡Datos importados!', `Se cargó la información de "${dessert.name}".`);
+  };
+
   // Review and Code Generator Handlers
   const handleGenerateReviewCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -713,8 +803,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             type="button"
             onClick={() => setActiveTab('catalog')}
             className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'catalog'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
-              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
               }`}
           >
             <span>🍰 Catálogo de Postres ({desserts.length})</span>
@@ -724,8 +814,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             type="button"
             onClick={() => setActiveTab('store_info')}
             className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'store_info'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
-              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
               }`}
           >
             <Store className="w-4 h-4" />
@@ -739,8 +829,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               refreshOrderCodes();
             }}
             className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'reviews'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
-              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
               }`}
           >
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
@@ -835,8 +925,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setSelectedCategoryFilter(cat.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${selectedCategoryFilter === cat.id
-                      ? 'bg-rose-600 text-white shadow-xs'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     {cat.label}
@@ -1145,13 +1235,283 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                {/* Section 3: Teléfono y WhatsApp */}
+                {/* Section 3: Tarjetas y Vitrina Destacada de Portada (Hero Showcase) */}
+                <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-xs space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                    <div className="flex items-center gap-2.5 text-rose-700 font-bold text-sm">
+                      <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-rose-600" />
+                      </div>
+                      <div>
+                        <span>3. Tarjetas Destacadas de la Portada</span>
+                        <p className="text-[11px] text-stone-500 font-normal mt-0.5">
+                          Edita imágenes, precios, textos, agrega o quita tarjetas de la vitrina superior.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddHeroCard}
+                      className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs shrink-0 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Agregar Tarjeta a Portada</span>
+                    </button>
+                  </div>
+
+                  {/* Cards List */}
+                  <div className="space-y-4">
+                    {(formConfig.heroCards || DEFAULT_HERO_CARDS).map((card, idx) => (
+                      <div
+                        key={card.id}
+                        className="bg-[#FAF8F6] rounded-2xl p-4 sm:p-5 border border-stone-200/80 shadow-xs space-y-4 transition-all"
+                      >
+                        {/* Card Header with controls */}
+                        <div className="flex items-center justify-between gap-2 border-b border-stone-200/70 pb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-black flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                            <span className="font-bold text-stone-800 text-xs sm:text-sm">
+                              {card.name || `Tarjeta #${idx + 1}`}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {/* Reorder Up */}
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveHeroCard(idx, 'up')}
+                              title="Mover arriba / a la izquierda"
+                              className="w-7 h-7 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-stone-600 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                              <ChevronUp className="w-4 h-4" />
+                            </button>
+
+                            {/* Reorder Down */}
+                            <button
+                              type="button"
+                              disabled={idx === (formConfig.heroCards || DEFAULT_HERO_CARDS).length - 1}
+                              onClick={() => handleMoveHeroCard(idx, 'down')}
+                              title="Mover abajo / a la derecha"
+                              className="w-7 h-7 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-stone-600 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </button>
+
+                            {/* Delete Card */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveHeroCard(card.id)}
+                              title="Eliminar esta tarjeta"
+                              className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 flex items-center justify-center text-red-600 transition-colors ml-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Quick Auto-Fill from Catalog */}
+                        <div className="bg-rose-50/70 p-2.5 rounded-xl border border-rose-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                          <span className="font-bold text-rose-900 flex items-center gap-1">
+                            ⚡ Copiar datos de un postre del catálogo:
+                          </span>
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleCopyFromCatalogDessert(card.id, e.target.value);
+                                e.target.value = "";
+                              }
+                            }}
+                            className="px-2.5 py-1 text-xs rounded-lg border border-rose-300 bg-white font-medium text-stone-800 focus:outline-none focus:ring-1 focus:ring-rose-500 cursor-pointer"
+                          >
+                            <option value="">Seleccionar postre para auto-llenar...</option>
+                            {desserts.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name} (S/ {d.price.toFixed(2)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Image Uploader & Preview Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                          <div className="sm:col-span-3">
+                            <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-200 border border-stone-300 shadow-xs">
+                              {card.image ? (
+                                <img
+                                  src={card.image}
+                                  alt={card.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-stone-400 text-xs">
+                                  Sin Imagen
+                                </div>
+                              )}
+                              {uploadingHeroCardId === card.id && (
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-[10px] font-bold">
+                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                  Optimizando...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="sm:col-span-9 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all">
+                                <Camera className="w-3.5 h-3.5" />
+                                <span>📷 Subir Foto desde Celular/PC</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleHeroCardImageUpload(e, card.id)}
+                                />
+                              </label>
+                              <span className="text-[10px] text-stone-500">o ingresa un enlace web directo:</span>
+                            </div>
+
+                            <input
+                              type="text"
+                              value={card.image}
+                              onChange={(e) => handleUpdateHeroCard(card.id, { image: e.target.value })}
+                              placeholder="https://images.unsplash.com/..."
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Card Info Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-[11px] font-bold text-stone-700 block mb-1">Nombre del Postre:</label>
+                            <input
+                              type="text"
+                              required
+                              value={card.name}
+                              onChange={(e) => handleUpdateHeroCard(card.id, { name: e.target.value })}
+                              placeholder="Ej. Torta de Tres Leches"
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white font-bold text-stone-900"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-stone-700 block mb-1">Porción / Etiqueta:</label>
+                            <input
+                              type="text"
+                              value={card.portion || 'Porción Generosa'}
+                              onChange={(e) => handleUpdateHeroCard(card.id, { portion: e.target.value })}
+                              placeholder="Ej. Porción Generosa"
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-stone-700 block mb-1">Calificación en Estrellas:</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="1"
+                              max="5"
+                              value={card.rating || 5.0}
+                              onChange={(e) => handleUpdateHeroCard(card.id, { rating: Number(e.target.value) })}
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white font-bold"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-stone-700 block mb-1">Precio Actual (S/):</label>
+                            <input
+                              type="number"
+                              step="0.50"
+                              min="0"
+                              required
+                              value={card.price}
+                              onChange={(e) => handleUpdateHeroCard(card.id, { price: Number(e.target.value) })}
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white font-black text-rose-600"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-stone-700 block mb-1">Precio Anterior / Tachado (S/):</label>
+                            <input
+                              type="number"
+                              step="0.50"
+                              min="0"
+                              value={card.originalPrice || ''}
+                              onChange={(e) => handleUpdateHeroCard(card.id, { originalPrice: e.target.value ? Number(e.target.value) : undefined })}
+                              placeholder="Ej. 12.00"
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold text-stone-700 block mb-1">Texto Botón WhatsApp:</label>
+                            <input
+                              type="text"
+                              value={card.buttonText || ''}
+                              onChange={(e) => handleUpdateHeroCard(card.id, { buttonText: e.target.value })}
+                              placeholder="Ej. Pedir Tres Leches"
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white font-medium text-emerald-800"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-stone-700 block mb-1">Descripción Breve:</label>
+                          <textarea
+                            rows={2}
+                            value={card.description}
+                            onChange={(e) => handleUpdateHeroCard(card.id, { description: e.target.value })}
+                            placeholder="Descripción apetitosa del postre..."
+                            className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white resize-none"
+                          />
+                        </div>
+
+                        {/* Accent Color Picker */}
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-[11px] font-bold text-stone-600">Color de Acento:</span>
+                          <div className="flex items-center gap-1.5">
+                            {[
+                              { key: 'rose', label: 'Rosa', bg: 'bg-rose-500' },
+                              { key: 'amber', label: 'Ámbar', bg: 'bg-amber-500' },
+                              { key: 'purple', label: 'Púrpura', bg: 'bg-purple-500' },
+                              { key: 'emerald', label: 'Esmeralda', bg: 'bg-emerald-500' },
+                              { key: 'pink', label: 'Fucsia', bg: 'bg-pink-500' },
+                            ].map((c) => (
+                              <button
+                                key={c.key}
+                                type="button"
+                                onClick={() => handleUpdateHeroCard(card.id, { accentColor: c.key })}
+                                className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${(card.accentColor || 'rose') === c.key
+                                    ? 'bg-stone-800 text-white border-stone-800 shadow-xs scale-105'
+                                    : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                                  }`}
+                              >
+                                <span className={`w-2 h-2 rounded-full ${c.bg}`} />
+                                <span>{c.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section 4: Teléfono y WhatsApp */}
                 <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-xs space-y-4">
                   <div className="flex items-center gap-2.5 text-emerald-700 font-bold text-sm">
                     <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
                       <Phone className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <span>3. Teléfono de Atención y Enlaces de WhatsApp</span>
+                    <span>4. Teléfono de Atención y Enlaces de WhatsApp</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1183,13 +1543,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                {/* Section 4: Dirección, Local y Horario */}
+                {/* Section 5: Dirección, Local y Horario */}
                 <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-xs space-y-4">
                   <div className="flex items-center gap-2.5 text-rose-700 font-bold text-sm">
                     <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center">
                       <MapPin className="w-4 h-4 text-rose-600" />
                     </div>
-                    <span>4. Ubicación de Recojo y Horarios</span>
+                    <span>5. Ubicación de Recojo y Horarios</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1313,6 +1673,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                       <div className="inline-block p-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[10px] font-bold shadow-xs">
                         🛵 DELIVERY GRATIS · {formConfig.deliveryPromoText || 'A partir de 2 unidades'}
+                      </div>
+
+                      {/* Showcase Mini Cards in Preview */}
+                      <div className="pt-2 text-left space-y-2">
+                        <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider text-center">
+                          Vitrina de Portada ({(formConfig.heroCards || DEFAULT_HERO_CARDS).length} postres)
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {(formConfig.heroCards || DEFAULT_HERO_CARDS).map((c, i) => (
+                            <div key={c.id || i} className="bg-white p-2 rounded-xl border border-rose-100 shadow-xs flex items-center gap-2">
+                              <img
+                                src={c.image}
+                                alt={c.name}
+                                className="w-10 h-10 rounded-lg object-cover shrink-0 border border-stone-200"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-[10px] text-stone-800 truncate">
+                                  {c.name}
+                                </div>
+                                <div className="text-[9px] text-rose-600 font-extrabold flex items-center justify-between">
+                                  <span>S/ {c.price.toFixed(2)}</span>
+                                  <span className="text-amber-500 font-bold text-[8px]">★ {c.rating || 5.0}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
@@ -1558,8 +1945,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setReviewRatingFilter('all')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${reviewRatingFilter === 'all'
-                      ? 'bg-stone-900 text-white'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        ? 'bg-stone-900 text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     Todas ({reviews.length})
@@ -1568,8 +1955,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setReviewRatingFilter('5')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === '5'
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     <span>5 ⭐</span>
@@ -1578,8 +1965,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setReviewRatingFilter('4')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === '4'
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     <span>4 ⭐</span>
@@ -1588,8 +1975,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setReviewRatingFilter('with-photo')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === 'with-photo'
-                      ? 'bg-rose-600 text-white'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     <Camera className="w-3 h-3" />
@@ -1604,8 +1991,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div
                     key={rev.id}
                     className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-3 ${deletingReviewId === rev.id
-                      ? 'opacity-40 bg-red-50 border-red-200 pointer-events-none'
-                      : 'bg-stone-50/60 border-stone-200 hover:border-rose-200 hover:bg-white hover:shadow-xs'
+                        ? 'opacity-40 bg-red-50 border-red-200 pointer-events-none'
+                        : 'bg-stone-50/60 border-stone-200 hover:border-rose-200 hover:bg-white hover:shadow-xs'
                       }`}
                   >
                     <div className="space-y-2.5">
@@ -2132,10 +2519,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="fixed top-6 right-4 sm:right-8 z-50 max-w-md w-[calc(100%-2rem)] sm:w-auto animate-bounce-subtle pointer-events-auto">
           <div
             className={`px-4 py-3.5 rounded-2xl shadow-2xl border flex items-start gap-3 backdrop-blur-md transition-all duration-300 ${actionToast.type === 'loading'
-              ? 'bg-stone-900/95 text-white border-rose-500/40 shadow-rose-950/30'
-              : actionToast.type === 'success'
-                ? 'bg-emerald-900/95 text-white border-emerald-400/50 shadow-emerald-950/30'
-                : 'bg-red-900/95 text-white border-red-400/50 shadow-red-950/30'
+                ? 'bg-stone-900/95 text-white border-rose-500/40 shadow-rose-950/30'
+                : actionToast.type === 'success'
+                  ? 'bg-emerald-900/95 text-white border-emerald-400/50 shadow-emerald-950/30'
+                  : 'bg-red-900/95 text-white border-red-400/50 shadow-red-950/30'
               }`}
           >
             <div className="mt-0.5 shrink-0">

@@ -79,6 +79,19 @@ export interface OrderVerification {
   reviewId?: string;
 }
 
+export interface HeroShowcaseCard {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  rating: number;
+  portion: string;
+  price: number;
+  originalPrice?: number;
+  buttonText?: string;
+  accentColor?: string; // 'rose' | 'amber' | 'purple' | 'emerald' | 'pink'
+}
+
 export interface StoreConfig {
   bakeryName: string;
   bakerySlogan: string;
@@ -93,4 +106,5 @@ export interface StoreConfig {
   deliveryPromoThreshold: number;
   defaultDeliveryFee: number;
   deliveryPromoText: string;
+  heroCards?: HeroShowcaseCard[];
 }
