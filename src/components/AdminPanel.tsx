@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Dessert, Category, Review, OrderVerification } from '../types';
+import { Dessert, Category, Review, OrderVerification, StoreConfig } from '../types';
 import {
   Plus, Edit3, Trash2, Image as ImageIcon, Upload, Check, Lock,
   Eye, LogOut, Sparkles, AlertCircle, ArrowLeft, Key,
   Share2, CheckCircle2, DollarSign, Tag, RefreshCw, X, Shield, Cloud,
   Star, MessageSquare, Ticket, Copy, Send, Camera, ShieldCheck, Search, Filter,
-  Loader2
+  Loader2, Store, Megaphone, Phone, MapPin, Sliders, Heart
 } from 'lucide-react';
 import {
   getStoredDesserts, addDessertToCloud, updateDessertInCloud, deleteDessertFromCloud,
@@ -17,6 +17,10 @@ import {
   subscribeToReviews, deleteReviewFromCloud, generateAdminOrderCode,
   fetchAllOrderCodesFromCloud
 } from '../utils/reviewsStorage';
+import {
+  DEFAULT_STORE_CONFIG, getStoredStoreConfig, updateStoreConfigInCloud,
+  resetStoreConfigInCloud, subscribeToStoreConfig
+} from '../utils/storeConfigStorage';
 import { BAKERY_NAME, BAKERY_PHONE_FORMATTED, BAKERY_PHONE_NUMBER } from '../data/desserts';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
@@ -30,11 +34,18 @@ interface ToastNotice {
 interface AdminPanelProps {
   onBackToStore: () => void;
   onDessertsUpdated: (updated: Dessert[]) => void;
+  storeConfig?: StoreConfig;
+  onStoreConfigUpdated?: (updated: StoreConfig) => void;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessertsUpdated }) => {
-  // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'catalog' | 'reviews'>('catalog');
+export const AdminPanel: React.FC<AdminPanelProps> = ({
+  onBackToStore,
+  onDessertsUpdated,
+  storeConfig = DEFAULT_STORE_CONFIG,
+  onStoreConfigUpdated
+}) => {
+  // Navigation tabs: Catalog, Store Info, Reviews
+  const [activeTab, setActiveTab] = useState<'catalog' | 'store_info' | 'reviews'>('catalog');
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -81,6 +92,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
 
+  // Store Configuration State for "Portada e Información" tab
+  const [formConfig, setFormConfig] = useState<StoreConfig>(() => storeConfig || getStoredStoreConfig());
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [showResetConfigConfirm, setShowResetConfigConfirm] = useState(false);
+
   // Reviews & Order Codes State
   const [reviews, setReviews] = useState<Review[]>([]);
   const [orderCodes, setOrderCodes] = useState<OrderVerification[]>([]);
@@ -104,14 +120,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
       setReviews(cloudReviews);
     });
 
+    const unsubConfig = subscribeToStoreConfig((cloudConfig) => {
+      setFormConfig(cloudConfig);
+      if (onStoreConfigUpdated) {
+        onStoreConfigUpdated(cloudConfig);
+      }
+    });
+
     fetchAdminPasswordFromCloud();
     refreshOrderCodes();
 
     return () => {
       unsubDesserts();
       unsubReviews();
+      unsubConfig();
     };
   }, []);
+
+  // Keep formConfig in sync when storeConfig prop changes
+  useEffect(() => {
+    if (storeConfig) {
+      setFormConfig(storeConfig);
+    }
+  }, [storeConfig]);
 
   const refreshOrderCodes = async () => {
     const codes = await fetchAllOrderCodesFromCloud();
@@ -390,6 +421,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
     }
   };
 
+  // Handle Save Store Configuration in Cloud
+  const handleSaveStoreConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsSavingConfig(true);
+      showLoadingToast('Guardando configuración...', 'Sincronizando anuncios, datos de portada y contacto en la nube...');
+      const updated = await updateStoreConfigInCloud(formConfig);
+      setFormConfig(updated);
+      if (onStoreConfigUpdated) {
+        onStoreConfigUpdated(updated);
+      }
+      showSuccessToast('¡Información y Portada actualizadas! 🎉', 'Los cambios en anuncios, portada y contacto ya están en vivo.');
+    } catch (err) {
+      console.error('Error al guardar configuración:', err);
+      showErrorToast('Error al guardar configuración', 'No se pudieron sincronizar los datos. Revisa tu conexión.');
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
+  // Handle Reset Store Configuration to default in Cloud
+  const handleResetStoreConfig = async () => {
+    try {
+      showLoadingToast('Restaurando información original...', 'Cargando datos y textos predeterminados...');
+      const defaults = await resetStoreConfigInCloud();
+      setFormConfig(defaults);
+      if (onStoreConfigUpdated) {
+        onStoreConfigUpdated(defaults);
+      }
+      setShowResetConfigConfirm(false);
+      showSuccessToast('¡Información restablecida!', 'Se restauraron los textos y datos originales de Dulce Tentación.');
+    } catch (err) {
+      console.error('Error al restablecer configuración:', err);
+      showErrorToast('Error al restablecer', 'Inténtalo de nuevo.');
+    }
+  };
+
   // Review and Code Generator Handlers
   const handleGenerateReviewCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -640,11 +708,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-stone-200 pb-3">
+        <div className="flex items-center gap-2 border-b border-stone-200 pb-3 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('catalog')}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'catalog'
+            className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'catalog'
               ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
               : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
               }`}
@@ -654,11 +722,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
 
           <button
             type="button"
+            onClick={() => setActiveTab('store_info')}
+            className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'store_info'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              }`}
+          >
+            <Store className="w-4 h-4" />
+            <span>🏪 Portada, Anuncios y Contacto</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => {
               setActiveTab('reviews');
               refreshOrderCodes();
             }}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'reviews'
+            className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'reviews'
               ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
               : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
               }`}
@@ -668,7 +748,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
           </button>
         </div>
 
-        {activeTab === 'catalog' ? (
+        {activeTab === 'catalog' && (
           <>
             {/* Banner Section */}
             <div className="bg-gradient-to-r from-[#2D1610] to-[#451B12] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg">
@@ -906,10 +986,357 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
               )}
             </div>
           </>
-        ) : (
-          /* ============================================================== */
-          /* REVIEWS & VERIFIED ORDER CODES TAB */
-          /* ============================================================== */
+        )}
+
+        {/* ============================================================== */}
+        {/* STORE INFO, ANNOUNCEMENT & CONTACT SETTINGS TAB */}
+        {/* ============================================================== */}
+        {activeTab === 'store_info' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Header Banner */}
+            <div className="bg-gradient-to-r from-[#2D1610] to-[#451B12] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-xl">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30">
+                    <Store className="w-4 h-4 text-rose-400" />
+                    <span>Personalización en Vivo de la Tienda</span>
+                  </div>
+                  <h1 className="font-serif-display text-2xl sm:text-3xl lg:text-4xl font-bold">
+                    Portada, Anuncios y Contacto
+                  </h1>
+                  <p className="text-stone-300 text-xs sm:text-sm">
+                    Edita los textos de la barra superior, lemas, mensajes de bienvenida, teléfono de WhatsApp y dirección. Todo se actualiza en vivo para todos tus clientes en la web.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfigConfirm(true)}
+                    className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition-all border border-white/20 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Restaurar Predeterminados</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Reset Configuration Confirmation Dialog */}
+            {showResetConfigConfirm && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs flex items-center justify-between gap-3 animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                  <span>¿Deseas restaurar todos los textos, anuncios y números a sus valores originales de Dulce Tentación?</span>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleResetStoreConfig}
+                    className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl cursor-pointer"
+                  >
+                    Sí, Restaurar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfigConfirm(false)}
+                    className="px-3.5 py-1.5 bg-stone-200 text-stone-700 font-bold rounded-xl cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Form & Live Preview Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Settings Form */}
+              <form onSubmit={handleSaveStoreConfig} className="lg:col-span-7 space-y-6">
+
+                {/* Section 1: Barra de Anuncios Superior */}
+                <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2.5 text-rose-700 font-bold text-sm">
+                    <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center">
+                      <Megaphone className="w-4 h-4 text-rose-600" />
+                    </div>
+                    <span>1. Barra Superior de Anuncios y Ofertas</span>
+                  </div>
+                  <p className="text-xs text-stone-500">
+                    Es la cinta de aviso que aparece fija arriba en toda la web para captar la atención de los clientes.
+                  </p>
+
+                  <div>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Texto del Anuncio Superior:</label>
+                    <textarea
+                      rows={2}
+                      value={formConfig.topAnnouncement}
+                      onChange={(e) => setFormConfig({ ...formConfig, topAnnouncement: e.target.value })}
+                      placeholder="Ej: 🛵 ¡DELIVERY GRATIS en pedidos a partir de 2 unidades! | Postres a S/ 10 c/u | WhatsApp: 965 255 201"
+                      className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50 resize-none font-medium text-stone-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 2: Identidad & Portada Hero */}
+                <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2.5 text-rose-700 font-bold text-sm">
+                    <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center">
+                      <Heart className="w-4 h-4 text-rose-600" />
+                    </div>
+                    <span>2. Nombre de Marca y Portada Principal (Hero)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-stone-700 block mb-1">Nombre de la Pastelería:</label>
+                      <input
+                        type="text"
+                        required
+                        value={formConfig.bakeryName}
+                        onChange={(e) => setFormConfig({ ...formConfig, bakeryName: e.target.value })}
+                        placeholder="Ej. Dulce Tentación"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50 font-bold text-stone-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-stone-700 block mb-1">Lema o Eslogan Corto:</label>
+                      <input
+                        type="text"
+                        value={formConfig.bakerySlogan}
+                        onChange={(e) => setFormConfig({ ...formConfig, bakerySlogan: e.target.value })}
+                        placeholder="Ej. Postres que enamoran"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Insignia Superior de Portada (Badge con corazón):</label>
+                    <input
+                      type="text"
+                      value={formConfig.bakerySubtitle}
+                      onChange={(e) => setFormConfig({ ...formConfig, bakerySubtitle: e.target.value })}
+                      placeholder="Ej. ¡Hechos con amor, para endulzar tu día!"
+                      className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Descripción o Mensaje de Bienvenida en Portada:</label>
+                    <textarea
+                      rows={2}
+                      value={formConfig.heroDescription}
+                      onChange={(e) => setFormConfig({ ...formConfig, heroDescription: e.target.value })}
+                      placeholder="Ej. Postres que enamoran · Postres caseros preparados a diario con la más fina dedicación"
+                      className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50 resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Texto de la Promoción de Delivery Gratis:</label>
+                    <input
+                      type="text"
+                      value={formConfig.deliveryPromoText}
+                      onChange={(e) => setFormConfig({ ...formConfig, deliveryPromoText: e.target.value })}
+                      placeholder="Ej. A partir de 2 unidades"
+                      className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 3: Teléfono y WhatsApp */}
+                <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2.5 text-emerald-700 font-bold text-sm">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                      <Phone className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <span>3. Teléfono de Atención y Enlaces de WhatsApp</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-stone-700 block mb-1">Número de WhatsApp Visible:</label>
+                      <input
+                        type="text"
+                        required
+                        value={formConfig.phoneFormatted}
+                        onChange={(e) => setFormConfig({ ...formConfig, phoneFormatted: e.target.value })}
+                        placeholder="Ej. 965 255 201"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50 font-bold font-mono"
+                      />
+                      <p className="text-[10px] text-stone-400 mt-1">Cómo lo verán los clientes en la pantalla.</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-stone-700 block mb-1">Número Internacional para WhatsApp:</label>
+                      <input
+                        type="text"
+                        required
+                        value={formConfig.phoneNumber}
+                        onChange={(e) => setFormConfig({ ...formConfig, phoneNumber: e.target.value.replace(/[^0-9]/g, '') })}
+                        placeholder="Ej. 51965255201"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50 font-bold font-mono text-emerald-700"
+                      />
+                      <p className="text-[10px] text-stone-400 mt-1">Con código de país sin espacios (ej: 51 para Perú).</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 4: Dirección, Local y Horario */}
+                <div className="bg-white p-6 rounded-3xl border border-rose-100 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2.5 text-rose-700 font-bold text-sm">
+                    <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-rose-600" />
+                    </div>
+                    <span>4. Ubicación de Recojo y Horarios</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-stone-700 block mb-1">Dirección del Local:</label>
+                      <input
+                        type="text"
+                        value={formConfig.address}
+                        onChange={(e) => setFormConfig({ ...formConfig, address: e.target.value })}
+                        placeholder="Ej. Jirón Manco Cápac 653"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-stone-700 block mb-1">Referencia:</label>
+                      <input
+                        type="text"
+                        value={formConfig.reference}
+                        onChange={(e) => setFormConfig({ ...formConfig, reference: e.target.value })}
+                        placeholder="Ej. Por el Seguro de Salud"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-stone-700 block mb-1">Horario de Atención:</label>
+                    <input
+                      type="text"
+                      value={formConfig.hours}
+                      onChange={(e) => setFormConfig({ ...formConfig, hours: e.target.value })}
+                      placeholder="Ej. Lunes a Domingo: 10:00 AM - 9:00 PM"
+                      className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Save Button */}
+                <div className="sticky bottom-6 z-20 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-rose-200 shadow-xl flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-bold text-stone-800 block">¿Listo para publicar tus cambios?</span>
+                    <span className="text-[11px] text-stone-500">Se guardarán en la nube y se actualizarán inmediatamente.</span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSavingConfig}
+                    className="px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-rose-200 flex items-center gap-2 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    {isSavingConfig ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Guardando en la nube...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 stroke-[2.5]" />
+                        <span>Guardar Cambios en la Tienda</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </form>
+
+              {/* Live Visual Preview Simulator */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="sticky top-24 space-y-4">
+                  <div className="bg-stone-900 text-white p-4 rounded-3xl border border-stone-800 shadow-lg space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-rose-400" />
+                      <h3 className="font-bold text-xs text-white">Simulador en Vivo</h3>
+                    </div>
+                    <p className="text-[11px] text-stone-400">
+                      Así verán tus clientes la portada y los textos de la tienda:
+                    </p>
+                  </div>
+
+                  {/* Mini Mockup Screen */}
+                  <div className="bg-[#FFF8F9] rounded-3xl border-2 border-rose-200 shadow-md overflow-hidden text-xs">
+                    {/* Top Bar Preview */}
+                    <div className="bg-rose-600 text-white text-[10px] py-1.5 px-3 text-center font-bold truncate">
+                      {formConfig.topAnnouncement || '🛵 ¡DELIVERY GRATIS en pedidos a partir de 2 unidades!'}
+                    </div>
+
+                    {/* Navbar Preview */}
+                    <div className="p-3 bg-white/90 border-b border-rose-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center text-xs">
+                          🍰
+                        </div>
+                        <div>
+                          <span className="font-serif-display font-bold text-stone-900 text-xs block leading-tight">
+                            {formConfig.bakeryName || 'Dulce Tentación'}
+                          </span>
+                          <span className="text-[9px] text-rose-600 font-semibold block">
+                            {formConfig.bakerySlogan || 'Postres que enamoran'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        WhatsApp: {formConfig.phoneFormatted || '965 255 201'}
+                      </span>
+                    </div>
+
+                    {/* Hero Banner Preview */}
+                    <div className="p-5 bg-gradient-to-b from-rose-100/60 to-white text-center space-y-3">
+                      <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-200/80 text-rose-800 text-[10px] font-bold">
+                        <Heart className="w-2.5 h-2.5 fill-rose-600 text-rose-600" />
+                        <span>{formConfig.bakerySubtitle || '¡Hechos con amor, para endulzar tu día!'}</span>
+                      </div>
+
+                      <h2 className="font-serif-display text-xl font-black text-[#3A1414] leading-tight">
+                        {formConfig.bakeryName || 'Dulce Tentación'}
+                      </h2>
+
+                      <p className="text-[11px] text-stone-600 leading-relaxed px-2">
+                        {formConfig.heroDescription || 'Postres caseros preparados a diario con la más fina dedicación.'}
+                      </p>
+
+                      <div className="inline-block p-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[10px] font-bold shadow-xs">
+                        🛵 DELIVERY GRATIS · {formConfig.deliveryPromoText || 'A partir de 2 unidades'}
+                      </div>
+                    </div>
+
+                    {/* Address & Hours Preview */}
+                    <div className="p-3.5 bg-stone-100 border-t border-stone-200 text-[10px] text-stone-600 space-y-1">
+                      <p className="flex items-center gap-1 font-semibold text-stone-800">
+                        <MapPin className="w-3 h-3 text-rose-600 shrink-0" />
+                        <span>{formConfig.address || 'Jirón Manco Cápac 653'} ({formConfig.reference || 'Por el Seguro de Salud'})</span>
+                      </p>
+                      <p className="text-stone-500 pl-4">
+                        🕒 {formConfig.hours || 'Lunes a Domingo: 10:00 AM - 9:00 PM'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* REVIEWS & VERIFIED ORDER CODES TAB */}
+        {/* ============================================================== */}
+        {activeTab === 'reviews' && (
           <div className="space-y-8 animate-fadeIn">
 
             {/* Reviews Header Banner */}

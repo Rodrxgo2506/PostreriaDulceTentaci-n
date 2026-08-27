@@ -1,54 +1,66 @@
 import React from 'react';
 import { Sparkles, MessageCircle, Heart, MapPin, CheckCircle2, ChevronRight, ArrowRight, Star } from 'lucide-react';
-import { 
-  BAKERY_NAME, BAKERY_SLOGAN, BAKERY_SUBTITLE, 
-  BAKERY_PHONE_NUMBER, BAKERY_PHONE_FORMATTED, 
-  BAKERY_ADDRESS, BAKERY_REFERENCE 
-} from '../data/desserts';
+import { StoreConfig } from '../types';
+import { DEFAULT_STORE_CONFIG } from '../utils/storeConfigStorage';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
 interface HeroProps {
   onExploreMenu: () => void;
   onOpenQuickCalculator: () => void;
+  storeConfig?: StoreConfig;
 }
 
-export const Hero: React.FC<HeroProps> = ({ onExploreMenu, onOpenQuickCalculator }) => {
+export const Hero: React.FC<HeroProps> = ({
+  onExploreMenu,
+  onOpenQuickCalculator,
+  storeConfig = DEFAULT_STORE_CONFIG
+}) => {
+  const bakeryName = storeConfig.bakeryName || DEFAULT_STORE_CONFIG.bakeryName;
+  const bakerySlogan = storeConfig.bakerySlogan || DEFAULT_STORE_CONFIG.bakerySlogan;
+  const bakerySubtitle = storeConfig.bakerySubtitle || DEFAULT_STORE_CONFIG.bakerySubtitle;
+  const heroDescription = storeConfig.heroDescription || `${bakerySlogan} · Postres caseros preparados a diario con la más fina dedicación`;
+  const phoneFormatted = storeConfig.phoneFormatted || DEFAULT_STORE_CONFIG.phoneFormatted;
+  const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
+  const address = storeConfig.address || DEFAULT_STORE_CONFIG.address;
+  const reference = storeConfig.reference || DEFAULT_STORE_CONFIG.reference;
+  const deliveryPromoText = storeConfig.deliveryPromoText || 'A partir de 2 unidades';
+
   const handleQuickWhatsApp = (dessertName?: string) => {
-    const msg = dessertName 
-      ? `¡Hola ${BAKERY_NAME}! 🍰 Deseo pedir ${dessertName} (S/ 10). ¿Tienen disponible para entrega hoy?`
-      : `¡Hola ${BAKERY_NAME}! 🍰 Quiero hacer un pedido de postres. ¿Me confirman la disponibilidad?`;
-    window.open(createWhatsAppUrl(BAKERY_PHONE_NUMBER, msg), '_blank', 'noopener,noreferrer');
+    const msg = dessertName
+      ? `¡Hola ${bakeryName}! 🍰 Deseo pedir ${dessertName} (S/ 10). ¿Tienen disponible para entrega hoy?`
+      : `¡Hola ${bakeryName}! 🍰 Quiero hacer un pedido de postres. ¿Me confirman la disponibilidad?`;
+    window.open(createWhatsAppUrl(phoneNumber, msg), '_blank', 'noopener,noreferrer');
   };
 
   return (
     <section id="hero-section" className="relative overflow-hidden pt-6 pb-16 lg:pt-10 lg:pb-20 bg-[#FCFAF8]">
-      
+
       {/* Background Soft Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-rose-100/50 via-pink-50/20 to-transparent pointer-events-none rounded-full blur-3xl -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Main Boutique Hero Card Container */}
         <div className="bg-white rounded-3xl sm:rounded-[36px] border border-rose-100/80 p-6 sm:p-10 lg:p-12 shadow-xl shadow-rose-900/5 relative overflow-hidden">
-          
+
           {/* Header Area */}
           <div className="text-center space-y-4 max-w-3xl mx-auto mb-10">
-            
+
             {/* Top Pill with Subtitle */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200/80 text-rose-700 text-xs sm:text-sm font-semibold shadow-xs">
               <span className="text-rose-500">♥</span>
-              <span>{BAKERY_SUBTITLE}</span>
+              <span>{bakerySubtitle}</span>
               <span className="text-rose-500">♥</span>
             </div>
 
             {/* Brand Title with elegant serif font */}
             <div className="space-y-2">
               <h1 className="font-serif-display text-4xl sm:text-6xl lg:text-7xl font-bold text-[#2D1610] tracking-tight">
-                {BAKERY_NAME}
+                {bakeryName}
               </h1>
-              
+
               <p className="text-sm sm:text-base lg:text-lg text-stone-600 font-medium max-w-xl mx-auto">
-                {BAKERY_SLOGAN} · Postres caseros preparados a diario con la más fina dedicación
+                {heroDescription}
               </p>
             </div>
 
@@ -56,7 +68,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreMenu, onOpenQuickCalculator
 
           {/* 3 Showcase Desserts Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 my-8">
-            
+
             {/* Dessert 1: Torta de Tres Leches */}
             <div className="bg-[#FAF8F5] rounded-3xl p-5 border border-stone-200/60 shadow-sm hover:shadow-xl hover:border-rose-300 transition-all duration-300 flex flex-col justify-between group">
               <div>
@@ -202,7 +214,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreMenu, onOpenQuickCalculator
 
           {/* Delivery & WhatsApp Info Callout */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#F8F5F1] rounded-2xl p-4 sm:p-6 border border-stone-200/80 mb-6">
-            
+
             {/* Delivery Promo */}
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-rose-600 flex items-center justify-center text-2xl text-white shadow-sm shrink-0">
@@ -214,7 +226,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreMenu, onOpenQuickCalculator
                     Delivery Gratis
                   </span>
                   <span className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    A partir de 2 unidades
+                    {deliveryPromoText}
                   </span>
                 </div>
                 <p className="text-xs text-stone-600 font-medium">
@@ -225,7 +237,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreMenu, onOpenQuickCalculator
 
             {/* WhatsApp Pedidos directos */}
             <a
-              href={createWhatsAppUrl(BAKERY_PHONE_NUMBER, `¡Hola ${BAKERY_NAME}! 🌸 Quiero hacer un pedido.`)}
+              href={createWhatsAppUrl(phoneNumber, `¡Hola ${bakeryName}! 🌸 Quiero hacer un pedido.`)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-between bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 sm:p-4 rounded-2xl shadow-sm transition-all group cursor-pointer"
@@ -239,7 +251,7 @@ export const Hero: React.FC<HeroProps> = ({ onExploreMenu, onOpenQuickCalculator
                     WhatsApp de Pedidos
                   </span>
                   <span className="text-base sm:text-lg font-black tracking-wide">
-                    {BAKERY_PHONE_FORMATTED}
+                    {phoneFormatted}
                   </span>
                 </div>
               </div>
@@ -256,10 +268,10 @@ export const Hero: React.FC<HeroProps> = ({ onExploreMenu, onOpenQuickCalculator
               </div>
               <div>
                 <h4 className="font-serif-display text-lg sm:text-xl font-bold uppercase tracking-wide text-rose-100">
-                  {BAKERY_ADDRESS}
+                  {address}
                 </h4>
                 <p className="text-xs text-rose-300 font-medium">
-                  Referencia: {BAKERY_REFERENCE}
+                  Referencia: {reference}
                 </p>
               </div>
             </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Dessert, CartItem } from './types';
+import { Dessert, CartItem, StoreConfig } from './types';
 import { BAKERY_PHONE_FORMATTED } from './data/desserts';
 import { getStoredDesserts, subscribeToDesserts } from './utils/dessertStorage';
+import { getStoredStoreConfig, subscribeToStoreConfig, DEFAULT_STORE_CONFIG } from './utils/storeConfigStorage';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { QuickOrderCalculator } from './components/QuickOrderCalculator';
@@ -30,6 +31,7 @@ export default function App() {
 
   // Dynamic Desserts Catalog loaded from local storage / master catalog
   const [desserts, setDesserts] = useState<Dessert[]>(() => getStoredDesserts());
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => getStoredStoreConfig());
   const [selectedDessert, setSelectedDessert] = useState<Dessert | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -51,10 +53,16 @@ export default function App() {
 
   // Listen for real-time Firestore database updates
   useEffect(() => {
-    const unsubscribe = subscribeToDesserts((cloudDesserts) => {
+    const unsubscribeDesserts = subscribeToDesserts((cloudDesserts) => {
       setDesserts(cloudDesserts);
     });
-    return () => unsubscribe();
+    const unsubscribeConfig = subscribeToStoreConfig((cloudConfig) => {
+      setStoreConfig(cloudConfig);
+    });
+    return () => {
+      unsubscribeDesserts();
+      unsubscribeConfig();
+    };
   }, []);
 
   // Persistent cart & favorites from localStorage
@@ -202,6 +210,8 @@ export default function App() {
       <AdminPanel
         onBackToStore={handleReturnToCustomerStore}
         onDessertsUpdated={(updated) => setDesserts(updated)}
+        storeConfig={storeConfig}
+        onStoreConfigUpdated={(cfg) => setStoreConfig(cfg)}
       />
     );
   }
@@ -211,10 +221,10 @@ export default function App() {
   // Customer Public Storefront (100% clean, no admin buttons)
   return (
     <div className="min-h-screen bg-[#FFF8F9] text-stone-800 flex flex-col selection:bg-rose-200 selection:text-rose-900 font-sans">
-      
+
       {/* Top Notification Announcement Bar */}
       <div className="bg-rose-600 text-white text-[11px] sm:text-xs py-2 px-4 text-center font-bold tracking-wide flex items-center justify-center gap-2">
-        <span>🛵 ¡DELIVERY GRATIS en pedidos a partir de 2 unidades! | Postres a <strong>S/ 10 c/u</strong> | WhatsApp: <strong>{BAKERY_PHONE_FORMATTED}</strong></span>
+        <span>{storeConfig.topAnnouncement || `🛵 ¡DELIVERY GRATIS en pedidos a partir de 2 unidades! | Postres a S/ 10 c/u | WhatsApp: ${storeConfig.phoneFormatted || BAKERY_PHONE_FORMATTED}`}</span>
       </div>
 
       {/* Main Sticky Navbar */}
@@ -235,6 +245,7 @@ export default function App() {
             el?.scrollIntoView({ behavior: 'smooth' });
           }
         }}
+        storeConfig={storeConfig}
       />
 
       {/* Main Content Area */}
@@ -249,6 +260,7 @@ export default function App() {
             const el = document.getElementById('calculadora-pedido');
             el?.scrollIntoView({ behavior: 'smooth' });
           }}
+          storeConfig={storeConfig}
         />
 
         {/* Quick Order Calculator with Real-time Delivery Promo */}
@@ -278,11 +290,11 @@ export default function App() {
         <ReviewsSection desserts={desserts} />
 
         {/* Contact Section */}
-        <ContactSection />
+        <ContactSection storeConfig={storeConfig} />
       </main>
 
       {/* Footer */}
-      <Footer />
+      <Footer storeConfig={storeConfig} />
 
       {/* Product Details Modal */}
       {selectedDessert && (
@@ -321,7 +333,7 @@ export default function App() {
       />
 
       {/* Floating WhatsApp Quick Action Button */}
-      <FloatingWhatsApp />
+      <FloatingWhatsApp storeConfig={storeConfig} />
 
     </div>
   );

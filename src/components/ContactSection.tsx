@@ -1,31 +1,41 @@
 import React, { useState } from 'react';
 import { MapPin, Phone, MessageCircle, Send, Sparkles } from 'lucide-react';
-import { 
-  BAKERY_NAME, BAKERY_PHONE_NUMBER, BAKERY_PHONE_FORMATTED, 
-  BAKERY_ADDRESS, BAKERY_REFERENCE 
-} from '../data/desserts';
+import { StoreConfig } from '../types';
+import { DEFAULT_STORE_CONFIG } from '../utils/storeConfigStorage';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
-export const ContactSection: React.FC = () => {
+interface ContactSectionProps {
+  storeConfig?: StoreConfig;
+}
+
+export const ContactSection: React.FC<ContactSectionProps> = ({
+  storeConfig = DEFAULT_STORE_CONFIG
+}) => {
   const [quickName, setQuickName] = useState('');
   const [quickMsg, setQuickMsg] = useState('');
+
+  const bakeryName = storeConfig.bakeryName || DEFAULT_STORE_CONFIG.bakeryName;
+  const phoneFormatted = storeConfig.phoneFormatted || DEFAULT_STORE_CONFIG.phoneFormatted;
+  const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
+  const address = storeConfig.address || DEFAULT_STORE_CONFIG.address;
+  const reference = storeConfig.reference || DEFAULT_STORE_CONFIG.reference;
 
   const handleSendQuickInquiry = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickName.trim() || !quickMsg.trim()) return;
 
-    const message = `🌸 *Consulta - ${BAKERY_NAME}*\n\n` +
+    const message = `🌸 *Consulta - ${bakeryName}*\n\n` +
       `👤 *Nombre:* ${quickName}\n` +
       `💬 *Mensaje:* ${quickMsg}\n\n` +
       `¿Podrían confirmarme la disponibilidad? ¡Muchas gracias! 💕`;
 
-    window.open(createWhatsAppUrl(BAKERY_PHONE_NUMBER, message), '_blank', 'noopener,noreferrer');
+    window.open(createWhatsAppUrl(phoneNumber, message), '_blank', 'noopener,noreferrer');
   };
 
   return (
     <section id="contacto" className="py-16 sm:py-24 bg-white relative">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3 mb-12">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-bold uppercase tracking-wider border border-rose-200/80">
@@ -44,12 +54,12 @@ export const ContactSection: React.FC = () => {
 
         {/* Essential Info Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          
+
           {/* Card 1: Essential Contact & Location */}
           <div className="bg-[#FAF8F5] rounded-3xl p-6 sm:p-8 border border-stone-200/80 shadow-xs space-y-6">
             <div>
               <h3 className="font-serif-display text-2xl font-bold text-[#2D1610] mb-1">
-                {BAKERY_NAME}
+                {bakeryName}
               </h3>
               <p className="text-xs text-rose-600 font-semibold">
                 Postres que enamoran · Preparados al día
@@ -63,8 +73,8 @@ export const ContactSection: React.FC = () => {
                 </div>
                 <div>
                   <span className="font-bold text-[#2D1610] block text-sm">Dirección</span>
-                  <span className="text-stone-700 font-semibold">{BAKERY_ADDRESS}</span>
-                  <span className="text-xs text-rose-600 block mt-0.5 font-medium">Referencia: {BAKERY_REFERENCE}</span>
+                  <span className="text-stone-700 font-semibold">{address}</span>
+                  <span className="text-xs text-rose-600 block mt-0.5 font-medium">Referencia: {reference}</span>
                 </div>
               </div>
 
@@ -74,7 +84,7 @@ export const ContactSection: React.FC = () => {
                 </div>
                 <div>
                   <span className="font-bold text-[#2D1610] block text-sm">WhatsApp de Pedidos</span>
-                  <span className="text-emerald-700 font-extrabold text-base tracking-wide">{BAKERY_PHONE_FORMATTED}</span>
+                  <span className="text-emerald-700 font-extrabold text-base tracking-wide">{phoneFormatted}</span>
                   <span className="text-xs text-stone-500 block">Atención y pedidos inmediatos</span>
                 </div>
               </div>
@@ -82,13 +92,13 @@ export const ContactSection: React.FC = () => {
 
             {/* Direct WhatsApp Call to Action */}
             <a
-              href={createWhatsAppUrl(BAKERY_PHONE_NUMBER, `¡Hola ${BAKERY_NAME}! 🌸 Quiero consultar sobre los postres disponibles para hoy.`)}
+              href={createWhatsAppUrl(phoneNumber, `¡Hola ${bakeryName}! 🌸 Quiero consultar sobre los postres disponibles para hoy.`)}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
             >
               <MessageCircle className="w-4 h-4 fill-white" />
-              <span>Chatear por WhatsApp ({BAKERY_PHONE_FORMATTED})</span>
+              <span>Chatear por WhatsApp ({phoneFormatted})</span>
             </a>
           </div>
 

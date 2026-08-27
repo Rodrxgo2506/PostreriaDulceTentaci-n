@@ -78,3 +78,19 @@ export interface OrderVerification {
   isUsedForReview: boolean;
   reviewId?: string;
 }
+
+export interface StoreConfig {
+  bakeryName: string;
+  bakerySlogan: string;
+  bakerySubtitle: string;
+  heroDescription: string;
+  topAnnouncement: string;
+  phoneFormatted: string;
+  phoneNumber: string;
+  address: string;
+  reference: string;
+  hours: string;
+  deliveryPromoThreshold: number;
+  defaultDeliveryFee: number;
+  deliveryPromoText: string;
+}

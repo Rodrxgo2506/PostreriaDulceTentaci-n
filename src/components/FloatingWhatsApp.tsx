@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
-import { BAKERY_NAME, BAKERY_PHONE_NUMBER } from '../data/desserts';
+import { StoreConfig } from '../types';
+import { DEFAULT_STORE_CONFIG } from '../utils/storeConfigStorage';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
-export const FloatingWhatsApp: React.FC = () => {
+interface FloatingWhatsAppProps {
+  storeConfig?: StoreConfig;
+}
+
+export const FloatingWhatsApp: React.FC<FloatingWhatsAppProps> = ({
+  storeConfig = DEFAULT_STORE_CONFIG
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [showNotification, setShowNotification] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+
+  const bakeryName = storeConfig.bakeryName || DEFAULT_STORE_CONFIG.bakeryName;
+  const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
 
   // Detect virtual keyboard on mobile devices to move button upwards
   useEffect(() => {
@@ -64,19 +74,18 @@ export const FloatingWhatsApp: React.FC = () => {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalMsg = message.trim() || `¡Hola ${BAKERY_NAME}! 🍰 Quisiera hacer un pedido de los postres en stock.`;
-    window.open(createWhatsAppUrl(BAKERY_PHONE_NUMBER, finalMsg), '_blank', 'noopener,noreferrer');
+    const finalMsg = message.trim() || `¡Hola ${bakeryName}! 🍰 Quisiera hacer un pedido de los postres en stock.`;
+    window.open(createWhatsAppUrl(phoneNumber, finalMsg), '_blank', 'noopener,noreferrer');
     setIsOpen(false);
     setMessage('');
   };
 
   return (
-    <div 
-      className={`fixed right-4 sm:right-5 z-40 flex flex-col items-end transition-all duration-300 ease-out ${
-        isKeyboardActive 
-          ? 'bottom-24 sm:bottom-5 -translate-y-6 sm:translate-y-0 opacity-90 hover:opacity-100' 
+    <div
+      className={`fixed right-4 sm:right-5 z-40 flex flex-col items-end transition-all duration-300 ease-out ${isKeyboardActive
+          ? 'bottom-24 sm:bottom-5 -translate-y-6 sm:translate-y-0 opacity-90 hover:opacity-100'
           : 'bottom-5 translate-y-0 opacity-100'
-      }`}
+        }`}
     >
       {/* Mini Chat Popover */}
       {isOpen && (
@@ -92,7 +101,7 @@ export const FloatingWhatsApp: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-serif-display font-bold text-base leading-tight flex items-center gap-1.5">
-                  <span>{BAKERY_NAME}</span>
+                  <span>{bakeryName}</span>
                   <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                 </h4>
                 <p className="text-[11px] text-emerald-100 font-medium">En línea · Atención y Pedidos Inmediatos</p>
@@ -111,7 +120,7 @@ export const FloatingWhatsApp: React.FC = () => {
           <div className="p-4 bg-[#F8FAFC] space-y-3">
             <div className="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm text-xs text-stone-800 space-y-1.5 border border-stone-100">
               <p className="font-bold text-emerald-700 flex items-center gap-1">
-                <span>¡Hola! Bienvenidos a Dulce Tentación</span>
+                <span>¡Hola! Bienvenidos a {bakeryName}</span>
                 <span>💖</span>
               </p>
               <p className="text-stone-600 leading-relaxed">
@@ -167,7 +176,7 @@ export const FloatingWhatsApp: React.FC = () => {
           setShowNotification(false);
         }}
         className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-400/40 hover:shadow-emerald-400/60 transition-all transform hover:scale-110 active:scale-95 cursor-pointer relative"
-        aria-label="Abrir chat de WhatsApp Dulce Tentación"
+        aria-label={`Abrir chat de WhatsApp ${bakeryName}`}
       >
         <MessageCircle className="w-7 h-7 fill-white" />
         <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-rose-500 border-2 border-white rounded-full" />

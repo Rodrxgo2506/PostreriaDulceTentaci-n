@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, MessageCircle, Menu, X, Heart, Search, MapPin, Sparkles, Utensils } from 'lucide-react';
-import { BAKERY_NAME, BAKERY_SLOGAN, BAKERY_PHONE_NUMBER, BAKERY_PHONE_FORMATTED } from '../data/desserts';
+import { StoreConfig } from '../types';
+import { DEFAULT_STORE_CONFIG } from '../utils/storeConfigStorage';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
 interface NavbarProps {
@@ -10,6 +11,7 @@ interface NavbarProps {
   onOpenFavorites: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  storeConfig?: StoreConfig;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,10 +21,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenFavorites,
   searchQuery,
   onSearchChange,
+  storeConfig = DEFAULT_STORE_CONFIG,
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+
+  const bakeryName = storeConfig.bakeryName || DEFAULT_STORE_CONFIG.bakeryName;
+  const bakerySlogan = storeConfig.bakerySlogan || DEFAULT_STORE_CONFIG.bakerySlogan;
+  const phoneFormatted = storeConfig.phoneFormatted || DEFAULT_STORE_CONFIG.phoneFormatted;
+  const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,22 +41,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const handleWhatsAppDirect = () => {
-    const message = `¡Hola ${BAKERY_NAME}! 🍰 Me gustaría pedir postres (Torta de tres leches, Crema volteada o Cheesecake de maracuyá).`;
-    window.open(createWhatsAppUrl(BAKERY_PHONE_NUMBER, message), '_blank', 'noopener,noreferrer');
+    const message = `¡Hola ${bakeryName}! 🍰 Me gustaría pedir postres (Torta de tres leches, Crema volteada o Cheesecake de maracuyá).`;
+    window.open(createWhatsAppUrl(phoneNumber, message), '_blank', 'noopener,noreferrer');
   };
 
   return (
     <header
       id="main-header"
-      className={`sticky top-0 z-40 transition-all duration-300 ${
-        isScrolled
+      className={`sticky top-0 z-40 transition-all duration-300 ${isScrolled
           ? 'bg-white/95 backdrop-blur-md shadow-md shadow-stone-900/5 py-3 border-b border-rose-100/60'
           : 'bg-[#FCFAF8]/95 backdrop-blur-sm py-4 border-b border-rose-100/40'
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
-          
+
           {/* Brand Logo & Boutique Emblem */}
           <a
             href="#"
@@ -61,12 +68,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="font-serif-display text-2xl sm:text-[26px] font-bold tracking-tight text-[#2D1610] group-hover:text-rose-600 transition-colors leading-none">
-                  {BAKERY_NAME}
+                  {bakeryName}
                 </span>
                 <span className="text-xs text-rose-500">♥</span>
               </div>
               <span className="text-[11px] font-medium text-stone-500 tracking-wide mt-1">
-                {BAKERY_SLOGAN}
+                {bakerySlogan}
               </span>
             </div>
           </a>
@@ -179,7 +186,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 hover:shadow-md transition-all transform hover:scale-102 active:scale-95 cursor-pointer"
             >
               <MessageCircle className="w-3.5 h-3.5 fill-white" />
-              <span>{BAKERY_PHONE_FORMATTED}</span>
+              <span>{phoneFormatted}</span>
             </button>
 
             {/* Mobile Menu Toggle */}
@@ -235,7 +242,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
               >
                 <MessageCircle className="w-4 h-4 fill-white" />
-                <span>Pedir por WhatsApp ({BAKERY_PHONE_FORMATTED})</span>
+                <span>Pedir por WhatsApp ({phoneFormatted})</span>
               </button>
             </div>
           </div>

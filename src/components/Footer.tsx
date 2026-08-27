@@ -1,16 +1,29 @@
 import React from 'react';
 import { Sparkles, Heart, MessageCircle, ShieldCheck } from 'lucide-react';
-import { BAKERY_NAME, BAKERY_PHONE_NUMBER, BAKERY_PHONE_FORMATTED, BAKERY_ADDRESS, BAKERY_REFERENCE } from '../data/desserts';
+import { StoreConfig } from '../types';
+import { DEFAULT_STORE_CONFIG } from '../utils/storeConfigStorage';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  storeConfig?: StoreConfig;
+}
+
+export const Footer: React.FC<FooterProps> = ({
+  storeConfig = DEFAULT_STORE_CONFIG
+}) => {
+  const bakeryName = storeConfig.bakeryName || DEFAULT_STORE_CONFIG.bakeryName;
+  const phoneFormatted = storeConfig.phoneFormatted || DEFAULT_STORE_CONFIG.phoneFormatted;
+  const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
+  const address = storeConfig.address || DEFAULT_STORE_CONFIG.address;
+  const reference = storeConfig.reference || DEFAULT_STORE_CONFIG.reference;
+
   return (
     <footer className="bg-[#1E0F0A] text-stone-300 pt-16 pb-12 border-t border-stone-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Top 3-column Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 pb-12 border-b border-stone-800">
-          
+
           {/* Col 1: Brand Info (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             <div className="flex items-center gap-3">
@@ -18,18 +31,18 @@ export const Footer: React.FC = () => {
                 <Sparkles className="w-5 h-5 text-rose-100" />
               </div>
               <span className="font-serif-display text-2xl font-bold text-white tracking-wide">
-                {BAKERY_NAME}
+                {bakeryName}
               </span>
             </div>
 
             <p className="text-xs sm:text-sm text-stone-400 leading-relaxed max-w-sm font-light">
-              Postres caseros de alta calidad preparados a diario con dedicación artesanal. 
+              Postres caseros de alta calidad preparados a diario con dedicación artesanal.
               Disfruta de nuestra Torta Tres Leches, Crema Volteada y Cheesecake de Maracuyá por solo <strong>S/ 10.00</strong>. Delivery GRATIS a partir de 2 unidades.
             </p>
 
             <div className="flex items-center gap-3 pt-2">
               <a
-                href={createWhatsAppUrl(BAKERY_PHONE_NUMBER, `¡Hola ${BAKERY_NAME}! 🌸`)}
+                href={createWhatsAppUrl(phoneNumber, `¡Hola ${bakeryName}! 🌸`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs"
@@ -61,9 +74,9 @@ export const Footer: React.FC = () => {
               <span>Ubicación & Contacto</span>
             </h4>
             <p className="text-xs text-stone-400 leading-relaxed">
-              📍 {BAKERY_ADDRESS} <br />
-              <span className="text-rose-300">({BAKERY_REFERENCE})</span> <br />
-              📱 WhatsApp: <strong className="text-white">{BAKERY_PHONE_FORMATTED}</strong>
+              📍 {address} <br />
+              <span className="text-rose-300">({reference})</span> <br />
+              📱 WhatsApp: <strong className="text-white">{phoneFormatted}</strong>
             </p>
 
             <div className="flex flex-wrap gap-2 pt-1 text-[10px] font-mono text-stone-300">
@@ -78,7 +91,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-500 gap-4">
-          <p>© {new Date().getFullYear()} {BAKERY_NAME}. Todos los derechos reservados.</p>
+          <p>© {new Date().getFullYear()} {bakeryName}. Todos los derechos reservados.</p>
           <p className="flex items-center gap-1 text-stone-400">
             Hecho con <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> para endulzar cada momento.
           </p>
