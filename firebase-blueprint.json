@@ -1,0 +1,71 @@
+{
+  "collections": [
+    {
+      "path": "desserts",
+      "description": "Bakery desserts catalog available in real-time to all clients and admin",
+      "rules": "allow read, write: if true;",
+      "schema": {
+        "id": "string",
+        "name": "string",
+        "category": "string",
+        "categoryName": "string",
+        "price": "number",
+        "originalPrice": "number",
+        "shortDescription": "string",
+        "fullDescription": "string",
+        "image": "string",
+        "servings": "string",
+        "preparationTime": "string",
+        "rating": "number",
+        "reviewCount": "number",
+        "tags": "array",
+        "ingredients": "array",
+        "allergens": "array",
+        "isBestSeller": "boolean",
+        "isNew": "boolean",
+        "updatedAt": "string"
+      }
+    },
+    {
+      "path": "reviews",
+      "description": "Verified customer reviews published in real-time",
+      "rules": "allow read, write: if true;",
+      "schema": {
+        "id": "string",
+        "name": "string",
+        "rating": "number",
+        "comment": "string",
+        "boughtItem": "string",
+        "date": "string",
+        "avatar": "string",
+        "photoUrl": "string",
+        "isVerified": "boolean",
+        "orderCode": "string",
+        "location": "string",
+        "createdAt": "string"
+      }
+    },
+    {
+      "path": "order_codes",
+      "description": "Order receipt codes used to authenticate real buyers",
+      "rules": "allow read, write: if true;",
+      "schema": {
+        "orderCode": "string",
+        "customerName": "string",
+        "boughtItems": "array",
+        "totalAmount": "number",
+        "createdAt": "string",
+        "isUsedForReview": "boolean",
+        "reviewId": "string"
+      }
+    },
+    {
+      "path": "settings",
+      "description": "Store configuration and admin password hash",
+      "rules": "allow read, write: if true;",
+      "schema": {
+        "adminPassword": "string"
+      }
+    }
+  ]
+}

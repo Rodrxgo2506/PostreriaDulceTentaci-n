@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  
+  h1, h2, h3, .font-serif-display {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+}
+
+/* Smooth custom glass and rose effects */
+.bg-rose-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.shadow-rose-subtle {
+  box-shadow: 0 10px 30px -10px rgba(244, 114, 182, 0.15);
+}
+
+.shadow-rose-hover {
+  box-shadow: 0 20px 40px -15px rgba(244, 114, 182, 0.25);
+}

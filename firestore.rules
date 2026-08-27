@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read for the bakery catalog so any customer on the web can see desserts
+    match /desserts/{dessertId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Customer reviews & verified buyer submissions
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Order codes for verification
+    match /order_codes/{codeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Allow settings configuration (admin password / store preferences)
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+  }
+}

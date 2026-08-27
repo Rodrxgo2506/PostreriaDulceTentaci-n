@@ -1,0 +1,6 @@
+{
+  "name": "Dulce Tentación - Postres que Enamoran",
+  "description": "Postres artesanales hechos con amor: Torta de Tres Leches, Crema Volteada y Cheesecake de Maracuyá. Delivery gratis a partir de 2 unidades y pedidos directos al WhatsApp 965 255 201.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
