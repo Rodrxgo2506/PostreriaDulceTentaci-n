@@ -1,29 +1,23 @@
 import React from 'react';
-import { Sparkles, MessageCircle, Heart, MapPin, CheckCircle2, ChevronRight, ArrowRight, Star } from 'lucide-react';
+import { Sparkles, MessageCircle, Star } from 'lucide-react';
 import { StoreConfig, HeroShowcaseCard } from '../types';
 import { DEFAULT_STORE_CONFIG, DEFAULT_HERO_CARDS } from '../utils/storeConfigStorage';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
 interface HeroProps {
-  onExploreMenu: () => void;
-  onOpenQuickCalculator: () => void;
+  onExploreMenu?: () => void;
+  onOpenQuickCalculator?: () => void;
   storeConfig?: StoreConfig;
 }
 
 export const Hero: React.FC<HeroProps> = ({
-  onExploreMenu,
-  onOpenQuickCalculator,
   storeConfig = DEFAULT_STORE_CONFIG
 }) => {
   const bakeryName = storeConfig.bakeryName || DEFAULT_STORE_CONFIG.bakeryName;
   const bakerySlogan = storeConfig.bakerySlogan || DEFAULT_STORE_CONFIG.bakerySlogan;
   const bakerySubtitle = storeConfig.bakerySubtitle || DEFAULT_STORE_CONFIG.bakerySubtitle;
   const heroDescription = storeConfig.heroDescription || `${bakerySlogan} · Postres caseros preparados a diario con la más fina dedicación`;
-  const phoneFormatted = storeConfig.phoneFormatted || DEFAULT_STORE_CONFIG.phoneFormatted;
   const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
-  const address = storeConfig.address || DEFAULT_STORE_CONFIG.address;
-  const reference = storeConfig.reference || DEFAULT_STORE_CONFIG.reference;
-  const deliveryPromoText = storeConfig.deliveryPromoText || 'A partir de 2 unidades';
 
   const heroCards: HeroShowcaseCard[] = Array.isArray(storeConfig.heroCards) && storeConfig.heroCards.length > 0
     ? storeConfig.heroCards
@@ -177,81 +171,6 @@ export const Hero: React.FC<HeroProps> = ({
                 </div>
               );
             })}
-          </div>
-
-          {/* Delivery & WhatsApp Info Callout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#F8F5F1] rounded-2xl p-4 sm:p-6 border border-stone-200/80 mb-6">
-
-            {/* Delivery Promo */}
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-600 flex items-center justify-center text-2xl text-white shadow-sm shrink-0">
-                🛵
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm sm:text-base font-black text-[#2D1610] uppercase tracking-wide">
-                    Delivery Gratis
-                  </span>
-                  <span className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    {deliveryPromoText}
-                  </span>
-                </div>
-                <p className="text-xs text-stone-600 font-medium">
-                  Directo y puntual a tu casa, oficina o evento
-                </p>
-              </div>
-            </div>
-
-            {/* WhatsApp Pedidos directos */}
-            <a
-              href={createWhatsAppUrl(phoneNumber, `¡Hola ${bakeryName}! 🌸 Quiero hacer un pedido.`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 sm:p-4 rounded-2xl shadow-sm transition-all group cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
-                  <MessageCircle className="w-5 h-5 fill-white" />
-                </div>
-                <div>
-                  <span className="text-[11px] font-semibold text-emerald-100 block">
-                    WhatsApp de Pedidos
-                  </span>
-                  <span className="text-base sm:text-lg font-black tracking-wide">
-                    {phoneFormatted}
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-white/80 group-hover:translate-x-1 transition-transform" />
-            </a>
-
-          </div>
-
-          {/* Location Bar */}
-          <div className="bg-[#2D1610] text-white rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-md">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-full bg-rose-600 flex items-center justify-center text-white shrink-0">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-serif-display text-lg sm:text-xl font-bold uppercase tracking-wide text-rose-100">
-                  {address}
-                </h4>
-                <p className="text-xs text-rose-300 font-medium">
-                  Referencia: {reference}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={onOpenQuickCalculator}
-                className="px-5 py-2.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
-              >
-                <span>🛵 Armar Pedido Rápido</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
           </div>
 
         </div>
