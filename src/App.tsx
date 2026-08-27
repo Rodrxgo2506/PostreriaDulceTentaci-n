@@ -13,7 +13,6 @@ import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { PaymentModal } from './components/PaymentModal';
-import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { AdminPanel } from './components/AdminPanel';
 
 export default function App() {
@@ -331,9 +330,6 @@ export default function App() {
         customerInfo={paymentData.customerInfo}
         onPaymentSuccess={handlePaymentSuccess}
       />
-
-      {/* Floating WhatsApp Quick Action Button */}
-      <FloatingWhatsApp storeConfig={storeConfig} />
 
     </div>
   );
