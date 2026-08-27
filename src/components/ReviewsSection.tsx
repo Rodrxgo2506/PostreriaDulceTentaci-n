@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Review, Dessert } from '../types';
-import { 
-  Star, Sparkles, Quote, CheckCircle2, ShieldCheck, Plus, 
-  Upload, X, MessageSquare, AlertCircle, Camera, Check, Heart, ExternalLink 
+import {
+  Star, Sparkles, Quote, CheckCircle2, ShieldCheck, Plus,
+  Upload, X, MessageSquare, AlertCircle, Camera, Check, Heart, ExternalLink,
+  Loader2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { 
-  subscribeToReviews, verifyOrderCode, submitVerifiedReviewToCloud 
+import {
+  subscribeToReviews, verifyOrderCode, submitVerifiedReviewToCloud
 } from '../utils/reviewsStorage';
 import { optimizeImageFile } from '../utils/dessertStorage';
 
@@ -34,6 +35,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
   const [isCodeVerified, setIsCodeVerified] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,11 +102,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
     if (!file) return;
 
     try {
+      setIsUploadingPhoto(true);
       const optimized = await optimizeImageFile(file, 800, 0.85);
       setPhotoBase64(optimized);
     } catch (err) {
       console.error('Error al procesar foto:', err);
       alert('No se pudo procesar la foto. Intenta con otra imagen.');
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -167,11 +172,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
 
   // Calculations
   const totalReviewsCount = reviews.length;
-  const averageRating = totalReviewsCount > 0 
+  const averageRating = totalReviewsCount > 0
     ? (reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / totalReviewsCount).toFixed(1)
     : '5.0';
 
-  const fiveStarPercentage = totalReviewsCount > 0 
+  const fiveStarPercentage = totalReviewsCount > 0
     ? Math.round((reviews.filter((r) => r.rating === 5).length / totalReviewsCount) * 100)
     : 100;
 
@@ -189,7 +194,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-100/40 rounded-full blur-3xl -z-10 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header & Trust Badge */}
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-10">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold uppercase tracking-wider border border-rose-200/80 shadow-xs">
@@ -251,32 +256,29 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
         <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 scrollbar-none">
           <button
             onClick={() => setSelectedFilter('all')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              selectedFilter === 'all'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${selectedFilter === 'all'
                 ? 'bg-rose-600 text-white shadow-sm'
                 : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
-            }`}
+              }`}
           >
             Todas las Opiniones ({reviews.length})
           </button>
           <button
             onClick={() => setSelectedFilter('5stars')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-              selectedFilter === '5stars'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${selectedFilter === '5stars'
                 ? 'bg-amber-500 text-white shadow-sm'
                 : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
-            }`}
+              }`}
           >
             <Star className="w-3.5 h-3.5 fill-current" />
             <span>Solo 5 Estrellas ({reviews.filter(r => r.rating === 5).length})</span>
           </button>
           <button
             onClick={() => setSelectedFilter('withPhotos')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-              selectedFilter === 'withPhotos'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${selectedFilter === 'withPhotos'
                 ? 'bg-rose-600 text-white shadow-sm'
                 : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
-            }`}
+              }`}
           >
             <Camera className="w-3.5 h-3.5" />
             <span>Con Foto ({reviews.filter(r => r.photoUrl).length})</span>
@@ -291,7 +293,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
               className="bg-white rounded-3xl p-6 sm:p-7 shadow-xs hover:shadow-xl hover:shadow-stone-900/5 border border-stone-200/80 transition-all duration-300 flex flex-col justify-between relative group"
             >
               <div className="space-y-3.5">
-                
+
                 {/* Stars & Verified Badge */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 text-amber-500">
@@ -368,7 +370,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
 
       {/* MODAL: SUBMIT VERIFIED REVIEW */}
       {isModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 overflow-y-auto bg-stone-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fadeIn overscroll-contain"
           onClick={() => setIsModalOpen(false)}
         >
@@ -402,7 +404,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
 
             {/* Modal Body */}
             <div className="p-6 sm:p-7 space-y-5 overflow-y-auto overscroll-contain">
-              
+
               {submitSuccess ? (
                 <div className="text-center py-8 space-y-3 animate-fadeIn">
                   <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-lg shadow-emerald-100">
@@ -417,7 +419,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
                 </div>
               ) : (
                 <form onSubmit={handleSubmitReview} className="space-y-4">
-                  
+
                   {/* Step 1: Order Code Validation */}
                   <div className="p-4 bg-rose-50/60 rounded-2xl border border-rose-100 space-y-2.5">
                     <div className="flex items-center justify-between">
@@ -444,11 +446,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
                           setVerificationError(null);
                         }}
                         disabled={isCodeVerified}
-                        className={`flex-1 px-3.5 py-2.5 rounded-xl border text-xs font-mono tracking-wider focus:outline-none focus:ring-2 ${
-                          isCodeVerified 
+                        className={`flex-1 px-3.5 py-2.5 rounded-xl border text-xs font-mono tracking-wider focus:outline-none focus:ring-2 ${isCodeVerified
                             ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
                             : 'bg-white border-stone-300 focus:ring-rose-400'
-                        }`}
+                          }`}
                       />
                       {!isCodeVerified && (
                         <button
@@ -476,7 +477,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
 
                   {/* Step 2: Rating & Details (enabled when verified or during typing) */}
                   <div className={`space-y-3.5 transition-opacity ${isCodeVerified ? 'opacity-100' : 'opacity-60 pointer-events-none'}`}>
-                    
+
                     {/* Star Rating */}
                     <div className="text-center py-2 bg-stone-50 rounded-2xl border border-stone-200/70">
                       <span className="text-xs font-bold text-stone-700 block mb-1">
@@ -493,11 +494,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
                             className="p-1 hover:scale-125 transition-transform cursor-pointer"
                           >
                             <Star
-                              className={`w-7 h-7 transition-colors ${
-                                (hoverRating || rating) >= star
+                              className={`w-7 h-7 transition-colors ${(hoverRating || rating) >= star
                                   ? 'fill-amber-400 text-amber-500'
                                   : 'text-stone-300'
-                              }`}
+                                }`}
                             />
                           </button>
                         ))}
@@ -593,10 +593,20 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="w-full py-2.5 border-2 border-dashed border-rose-200 hover:border-rose-400 rounded-xl bg-rose-50/40 text-rose-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                          disabled={isUploadingPhoto}
+                          className="w-full py-2.5 border-2 border-dashed border-rose-200 hover:border-rose-400 rounded-xl bg-rose-50/40 text-rose-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-60"
                         >
-                          <Camera className="w-4 h-4" />
-                          <span>Adjuntar foto de tu postre</span>
+                          {isUploadingPhoto ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+                              <span>Optimizando foto...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Camera className="w-4 h-4" />
+                              <span>Adjuntar foto de tu postre</span>
+                            </>
+                          )}
                         </button>
                       )}
                       <input
@@ -614,11 +624,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ desserts = [] })
                   <div className="pt-2">
                     <button
                       type="submit"
-                      disabled={!isCodeVerified || isSubmitting}
+                      disabled={!isCodeVerified || isSubmitting || isUploadingPhoto}
                       className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md shadow-rose-200 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                     >
                       {isSubmitting ? (
-                        <span>Publicando en tiempo real...</span>
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Guardando y publicando en vivo...</span>
+                        </>
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />

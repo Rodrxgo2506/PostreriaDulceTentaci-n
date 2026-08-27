@@ -1,23 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dessert, Category, Review, OrderVerification } from '../types';
-import { 
-  Plus, Edit3, Trash2, Image as ImageIcon, Upload, Check, Lock, 
-  Eye, LogOut, Sparkles, AlertCircle, ArrowLeft, Key, 
+import {
+  Plus, Edit3, Trash2, Image as ImageIcon, Upload, Check, Lock,
+  Eye, LogOut, Sparkles, AlertCircle, ArrowLeft, Key,
   Share2, CheckCircle2, DollarSign, Tag, RefreshCw, X, Shield, Cloud,
-  Star, MessageSquare, Ticket, Copy, Send, Camera, ShieldCheck, Search, Filter
+  Star, MessageSquare, Ticket, Copy, Send, Camera, ShieldCheck, Search, Filter,
+  Loader2
 } from 'lucide-react';
-import { 
-  getStoredDesserts, addDessertToCloud, updateDessertInCloud, deleteDessertFromCloud, 
-  resetDessertsToDefaultInCloud, optimizeImageFile, getAdminPassword, 
+import {
+  getStoredDesserts, addDessertToCloud, updateDessertInCloud, deleteDessertFromCloud,
+  resetDessertsToDefaultInCloud, optimizeImageFile, getAdminPassword,
   setAdminPasswordInCloud, fetchAdminPasswordFromCloud, DEFAULT_ADMIN_PASSWORD,
   subscribeToDesserts
 } from '../utils/dessertStorage';
-import { 
-  subscribeToReviews, deleteReviewFromCloud, generateAdminOrderCode, 
-  fetchAllOrderCodesFromCloud 
+import {
+  subscribeToReviews, deleteReviewFromCloud, generateAdminOrderCode,
+  fetchAllOrderCodesFromCloud
 } from '../utils/reviewsStorage';
 import { BAKERY_NAME, BAKERY_PHONE_FORMATTED, BAKERY_PHONE_NUMBER } from '../data/desserts';
 import { createWhatsAppUrl } from '../utils/whatsapp';
+
+interface ToastNotice {
+  id: string;
+  type: 'loading' | 'success' | 'error';
+  title: string;
+  message?: string;
+}
 
 interface AdminPanelProps {
   onBackToStore: () => void;
@@ -33,6 +41,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState('');
   const [isSavingCloud, setIsSavingCloud] = useState(false);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+
+  // Global Toast / Action Notification State
+  const [actionToast, setActionToast] = useState<ToastNotice | null>(null);
+
+  const showLoadingToast = (title: string, message?: string) => {
+    const id = Date.now().toString();
+    setActionToast({ id, type: 'loading', title, message });
+    return id;
+  };
+
+  const showSuccessToast = (title: string, message?: string) => {
+    const id = Date.now().toString();
+    setActionToast({ id, type: 'success', title, message });
+    setTimeout(() => {
+      setActionToast((current) => (current?.id === id ? null : current));
+    }, 3800);
+  };
+
+  const showErrorToast = (title: string, message?: string) => {
+    const id = Date.now().toString();
+    setActionToast({ id, type: 'error', title, message });
+    setTimeout(() => {
+      setActionToast((current) => (current?.id === id ? null : current));
+    }, 4500);
+  };
 
   // Password Change Modal
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -150,11 +184,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
 
     try {
       setIsUploadingImage(true);
+      showLoadingToast('Optimizando foto...', 'Procesando y comprimiendo imagen para carga ultrarrápida...');
       const compressedBase64 = await optimizeImageFile(file, 900, 0.85);
       setFormImage(compressedBase64);
+      showSuccessToast('¡Foto cargada con éxito!', 'La imagen se optimizó y está lista para guardarse.');
     } catch (err) {
       console.error('Error cargando imagen:', err);
-      alert('Hubo un error al procesar la imagen. Intenta con otra foto.');
+      showErrorToast('Error al procesar imagen', 'Hubo un error al procesar la imagen. Intenta con otra foto.');
     } finally {
       setIsUploadingImage(false);
     }
@@ -205,12 +241,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
     e.preventDefault();
 
     if (!formName.trim()) {
-      alert('Por favor ingresa el nombre del postre.');
+      showErrorToast('Falta el nombre', 'Por favor ingresa el nombre del postre.');
       return;
     }
 
     if (!formImage.trim()) {
-      alert('Por favor sube una foto o ingresa un enlace de imagen.');
+      showErrorToast('Falta la imagen', 'Por favor sube una foto o ingresa un enlace de imagen.');
       return;
     }
 
@@ -230,6 +266,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
       .filter(Boolean);
 
     setIsSavingCloud(true);
+    const actionLabel = editingDessertId ? 'Guardando cambios del postre...' : 'Publicando nuevo postre en la tienda...';
+    showLoadingToast(actionLabel, 'Sincronizando y guardando en la base de datos en la nube...');
 
     try {
       if (editingDessertId) {
@@ -259,6 +297,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
         const updatedList = await updateDessertInCloud(updatedItem);
         setDesserts(updatedList);
         onDessertsUpdated(updatedList);
+        showSuccessToast('¡Cambios guardados con éxito! 🎉', `El postre "${formName.trim()}" se actualizó en vivo en la tienda.`);
       } else {
         // Add New
         const slugId = `postre-${formName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now()}`;
@@ -286,10 +325,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
         const updatedList = await addDessertToCloud(newItem);
         setDesserts(updatedList);
         onDessertsUpdated(updatedList);
+        showSuccessToast('¡Postre subido con éxito! 🎉', `"${formName.trim()}" ha sido publicado en el catálogo web.`);
       }
       setIsModalOpen(false);
     } catch (err) {
       console.error('Error al guardar en la nube:', err);
+      showErrorToast('Error al guardar cambios', 'No se pudieron sincronizar los datos. Revisa tu conexión.');
     } finally {
       setIsSavingCloud(false);
     }
@@ -298,70 +339,103 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
   // Handle Delete with Cloud Sync
   const handleDeleteDessert = async (id: string, name: string) => {
     if (confirm(`¿Estás seguro de que deseas eliminar "${name}" del catálogo global?`)) {
-      const updatedList = await deleteDessertFromCloud(id);
-      setDesserts(updatedList);
-      onDessertsUpdated(updatedList);
+      try {
+        showLoadingToast('Eliminando postre...', `Borrando "${name}" del catálogo global...`);
+        const updatedList = await deleteDessertFromCloud(id);
+        setDesserts(updatedList);
+        onDessertsUpdated(updatedList);
+        showSuccessToast('¡Postre eliminado!', `"${name}" fue retirado del catálogo en vivo.`);
+      } catch (err) {
+        console.error('Error al eliminar postre:', err);
+        showErrorToast('Error al eliminar', 'No se pudo eliminar el postre.');
+      }
     }
   };
 
   // Handle Reset to defaults in Cloud
   const handleResetCatalog = async () => {
-    const defaultList = await resetDessertsToDefaultInCloud();
-    setDesserts(defaultList);
-    onDessertsUpdated(defaultList);
-    setShowResetConfirm(false);
+    try {
+      showLoadingToast('Restaurando catálogo...', 'Cargando postres originales predeterminados...');
+      const defaultList = await resetDessertsToDefaultInCloud();
+      setDesserts(defaultList);
+      onDessertsUpdated(defaultList);
+      setShowResetConfirm(false);
+      showSuccessToast('¡Catálogo restaurado con éxito!', 'Se han restablecido los postres iniciales de Dulce Tentación.');
+    } catch (err) {
+      console.error('Error al restaurar:', err);
+      showErrorToast('Error al restaurar catálogo', 'Inténtalo de nuevo.');
+    }
   };
 
   // Handle Change Password in Cloud
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword.trim() || newPassword.length < 4) {
-      alert('La contraseña debe tener al menos 4 caracteres.');
+      showErrorToast('Contraseña muy corta', 'La contraseña debe tener al menos 4 caracteres.');
       return;
     }
-    await setAdminPasswordInCloud(newPassword.trim());
-    setPasswordChangeSuccess(true);
-    setTimeout(() => {
-      setPasswordChangeSuccess(false);
-      setIsChangingPassword(false);
-      setNewPassword('');
-    }, 2000);
+    try {
+      showLoadingToast('Actualizando contraseña...', 'Guardando nueva clave de administrador en la nube...');
+      await setAdminPasswordInCloud(newPassword.trim());
+      setPasswordChangeSuccess(true);
+      showSuccessToast('¡Contraseña actualizada con éxito!', 'Tu nueva clave ya está activa.');
+      setTimeout(() => {
+        setPasswordChangeSuccess(false);
+        setIsChangingPassword(false);
+        setNewPassword('');
+      }, 1500);
+    } catch (err) {
+      console.error('Error al cambiar contraseña:', err);
+      showErrorToast('Error al guardar contraseña', 'No se pudo actualizar.');
+    }
   };
 
   // Review and Code Generator Handlers
   const handleGenerateReviewCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCodeCustomerName.trim()) {
-      alert('Ingresa el nombre del cliente');
+      showErrorToast('Falta el cliente', 'Ingresa el nombre del cliente');
       return;
     }
 
-    const code = await generateAdminOrderCode(newCodeCustomerName.trim(), newCodeDessert.trim());
-    const baseUrl = window.location.origin;
-    const directReviewUrl = `${baseUrl}/?order_code=${code}#testimonios`;
-    const message = `🌸 *¡Hola ${newCodeCustomerName.trim()}!* 🍰\n\nMuchas gracias por comprar en *${BAKERY_NAME}* 💕\n\nNos encantaría que nos compartas tu experiencia real en nuestra web como *Comprador Verificado* usando tu código exclusivo:\n\n🎟️ *Tu Código de Compra:* #${code}\n\n👉 *Haz clic aquí para calificar:* ${directReviewUrl}\n\n¡Te tomará menos de 1 minuto y nos ayuda un montón! ✨`;
+    try {
+      setIsGeneratingCode(true);
+      showLoadingToast('Generando código...', 'Registrando comprador verificado en la base de datos...');
+      const code = await generateAdminOrderCode(newCodeCustomerName.trim(), newCodeDessert.trim());
+      const baseUrl = window.location.origin;
+      const directReviewUrl = `${baseUrl}/?order_code=${code}#testimonios`;
+      const message = `🌸 *¡Hola ${newCodeCustomerName.trim()}!* 🍰\n\nMuchas gracias por comprar en *${BAKERY_NAME}* 💕\n\nNos encantaría que nos compartas tu experiencia real en nuestra web como *Comprador Verificado* usando tu código exclusivo:\n\n🎟️ *Tu Código de Compra:* #${code}\n\n👉 *Haz clic aquí para calificar:* ${directReviewUrl}\n\n¡Te tomará menos de 1 minuto y nos ayuda un montón! ✨`;
 
-    setGeneratedCodeResult({
-      code,
-      url: directReviewUrl,
-      msg: message,
-    });
+      setGeneratedCodeResult({
+        code,
+        url: directReviewUrl,
+        msg: message,
+      });
 
-    setNewCodeCustomerName('');
-    setNewCodeDessert('');
-    await refreshOrderCodes();
+      setNewCodeCustomerName('');
+      setNewCodeDessert('');
+      await refreshOrderCodes();
+      showSuccessToast('¡Código generado con éxito!', 'El código ya está listo para copiar y enviar a tu cliente.');
+    } catch (err) {
+      console.error('Error al generar código:', err);
+      showErrorToast('Error al generar código', 'Inténtalo nuevamente.');
+    } finally {
+      setIsGeneratingCode(false);
+    }
   };
 
   const handleDeleteReview = async (id: string, name: string) => {
     if (confirm(`¿Estás seguro de que deseas eliminar permanentemente la reseña de "${name}"? Esta acción borrará la opinión de la web en tiempo real.`)) {
       try {
         setDeletingReviewId(id);
+        showLoadingToast('Eliminando opinión...', `Borrando comentario de "${name}" de la web...`);
         await deleteReviewFromCloud(id);
         setReviewActionNotice(`Se eliminó la reseña de "${name}" correctamente.`);
+        showSuccessToast('¡Opinión eliminada con éxito!', `La reseña de "${name}" fue removida de la tienda.`);
         setTimeout(() => setReviewActionNotice(null), 3500);
       } catch (err) {
         console.error('Error al borrar reseña:', err);
-        alert('Hubo un error al intentar eliminar la reseña. Inténtalo nuevamente.');
+        showErrorToast('Error al borrar', 'Hubo un error al intentar eliminar la reseña.');
       } finally {
         setDeletingReviewId(null);
       }
@@ -372,12 +446,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
     if (!generatedCodeResult) return;
     navigator.clipboard.writeText(generatedCodeResult.msg);
     setCopiedCodeMsg(true);
+    showSuccessToast('¡Mensaje copiado!', 'El texto con el enlace para el cliente ya está en tu portapapeles.');
     setTimeout(() => setCopiedCodeMsg(false), 2000);
   };
 
   // Filtered Reviews list for Moderation
   const filteredReviews = reviews.filter((r) => {
-    const matchesSearch = 
+    const matchesSearch =
       r.name.toLowerCase().includes(reviewSearchQuery.toLowerCase()) ||
       r.comment.toLowerCase().includes(reviewSearchQuery.toLowerCase()) ||
       (r.boughtItem && r.boughtItem.toLowerCase().includes(reviewSearchQuery.toLowerCase())) ||
@@ -408,7 +483,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
     return (
       <div className="min-h-screen bg-[#FFF8F8] flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-rose-100 shadow-xl space-y-6 text-center">
-          
+
           <div className="w-16 h-16 bg-rose-50 rounded-2xl border border-rose-200 flex items-center justify-center mx-auto text-3xl">
             👑
           </div>
@@ -483,11 +558,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
   // -------------------------------------------------------------
   return (
     <div className="min-h-screen bg-[#FFFBFB] text-stone-900 pb-20">
-      
+
       {/* Top Navbar */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-rose-100 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          
+
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center text-lg shadow-sm">
               🍰
@@ -563,17 +638,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-        
+
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 border-b border-stone-200 pb-3">
           <button
             type="button"
             onClick={() => setActiveTab('catalog')}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'catalog'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
-                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
-            }`}
+            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'catalog'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              }`}
           >
             <span>🍰 Catálogo de Postres ({desserts.length})</span>
           </button>
@@ -584,11 +658,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
               setActiveTab('reviews');
               refreshOrderCodes();
             }}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'reviews'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
-                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
-            }`}
+            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'reviews'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              }`}
           >
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span>⭐ Opiniones Verificadas ({reviews.length})</span>
@@ -627,219 +700,218 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
               </div>
             </div>
 
-        {/* Metric Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-xs">
-            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">Total Postres</span>
-            <span className="font-serif-display text-2xl sm:text-3xl font-bold text-stone-900 mt-1 block">
-              {desserts.length}
-            </span>
-          </div>
+            {/* Metric Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-xs">
+                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">Total Postres</span>
+                <span className="font-serif-display text-2xl sm:text-3xl font-bold text-stone-900 mt-1 block">
+                  {desserts.length}
+                </span>
+              </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-xs">
-            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">Precio Estándar</span>
-            <span className="font-serif-display text-2xl sm:text-3xl font-bold text-rose-600 mt-1 block">
-              S/ 10.00
-            </span>
-          </div>
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-xs">
+                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">Precio Estándar</span>
+                <span className="font-serif-display text-2xl sm:text-3xl font-bold text-rose-600 mt-1 block">
+                  S/ 10.00
+                </span>
+              </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-xs">
-            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">Modalidad 1 Postre</span>
-            <span className="text-xs sm:text-sm font-bold text-stone-800 mt-2 block">
-              🏪 Recojo en Tienda
-            </span>
-          </div>
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-xs">
+                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">Modalidad 1 Postre</span>
+                <span className="text-xs sm:text-sm font-bold text-stone-800 mt-2 block">
+                  🏪 Recojo en Tienda
+                </span>
+              </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-xs">
-            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">Modalidad 2+ Postres</span>
-            <span className="text-xs sm:text-sm font-bold text-emerald-700 mt-2 block">
-              🛵 ¡DELIVERY GRATIS!
-            </span>
-          </div>
-        </div>
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-xs">
+                <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider block">Modalidad 2+ Postres</span>
+                <span className="text-xs sm:text-sm font-bold text-emerald-700 mt-2 block">
+                  🛵 ¡DELIVERY GRATIS!
+                </span>
+              </div>
+            </div>
 
-        {/* Filter and Search Bar */}
-        <div className="bg-white p-4 rounded-2xl border border-rose-100 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="w-full sm:w-72">
-            <input
-              type="text"
-              placeholder="Buscar por nombre o ingrediente..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            {[
-              { id: 'all', label: 'Todos' },
-              { id: 'postres', label: 'Postres' },
-              { id: 'tortas', label: 'Tortas' },
-              { id: 'tartas', label: 'Tartas' },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategoryFilter(cat.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                  selectedCategoryFilter === cat.id
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Product Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredDesserts.map((dessert) => (
-            <div
-              key={dessert.id}
-              className="bg-white rounded-3xl border border-rose-100 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col"
-            >
-              {/* Product Image Preview */}
-              <div className="relative h-48 w-full bg-stone-100 overflow-hidden">
-                <img
-                  src={dessert.image}
-                  alt={dessert.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80';
-                  }}
+            {/* Filter and Search Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-rose-100 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="w-full sm:w-72">
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre o ingrediente..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
                 />
-                
-                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                  <span className="bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                    {dessert.category}
-                  </span>
-                  {dessert.isBestSeller && (
-                    <span className="bg-amber-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-                      ★ Favorito
-                    </span>
-                  )}
-                  {dessert.isNew && (
-                    <span className="bg-rose-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-                      ¡Nuevo!
-                    </span>
-                  )}
-                </div>
-
-                <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-xs px-3 py-1 rounded-full shadow-md">
-                  <span className="font-serif-display font-black text-rose-700 text-sm">
-                    S/ {dessert.price.toFixed(2)}
-                  </span>
-                </div>
               </div>
 
-              {/* Card Body */}
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div className="space-y-2">
-                  <h3 className="font-serif-display font-bold text-lg text-stone-900 leading-snug">
-                    {dessert.name}
-                  </h3>
-                  <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
-                    {dessert.shortDescription}
-                  </p>
+              <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                {[
+                  { id: 'all', label: 'Todos' },
+                  { id: 'postres', label: 'Postres' },
+                  { id: 'tortas', label: 'Tortas' },
+                  { id: 'tartas', label: 'Tartas' },
+                ].map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategoryFilter(cat.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${selectedCategoryFilter === cat.id
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {dessert.tags?.slice(0, 3).map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="text-[10px] font-medium bg-rose-50 text-rose-700 px-2 py-0.5 rounded-md"
-                      >
-                        #{tag}
+            {/* Product Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDesserts.map((dessert) => (
+                <div
+                  key={dessert.id}
+                  className="bg-white rounded-3xl border border-rose-100 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col"
+                >
+                  {/* Product Image Preview */}
+                  <div className="relative h-48 w-full bg-stone-100 overflow-hidden">
+                    <img
+                      src={dessert.image}
+                      alt={dessert.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80';
+                      }}
+                    />
+
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                      <span className="bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        {dessert.category}
                       </span>
-                    ))}
+                      {dessert.isBestSeller && (
+                        <span className="bg-amber-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                          ★ Favorito
+                        </span>
+                      )}
+                      {dessert.isNew && (
+                        <span className="bg-rose-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                          ¡Nuevo!
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-xs px-3 py-1 rounded-full shadow-md">
+                      <span className="font-serif-display font-black text-rose-700 text-sm">
+                        S/ {dessert.price.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-2">
+                      <h3 className="font-serif-display font-bold text-lg text-stone-900 leading-snug">
+                        {dessert.name}
+                      </h3>
+                      <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                        {dessert.shortDescription}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {dessert.tags?.slice(0, 3).map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] font-medium bg-rose-50 text-rose-700 px-2 py-0.5 rounded-md"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Actions Footer */}
+                    <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-stone-400 font-medium truncate">
+                        {dessert.servings}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(dessert)}
+                          className="px-3 py-1.5 rounded-xl border border-stone-200 hover:border-rose-300 hover:bg-rose-50 text-stone-700 hover:text-rose-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Editar</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDessert(dessert.id, dessert.name)}
+                          className="p-1.5 rounded-xl text-stone-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
+                          title="Eliminar postre"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
 
-                {/* Actions Footer */}
-                <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-stone-400 font-medium truncate">
-                    {dessert.servings}
-                  </span>
+            {/* Empty state if search has no results */}
+            {filteredDesserts.length === 0 && (
+              <div className="text-center py-16 bg-white rounded-3xl border border-rose-100 p-8">
+                <span className="text-4xl block mb-2">🔍</span>
+                <h3 className="font-serif-display text-lg font-bold text-stone-800">No se encontraron postres</h3>
+                <p className="text-xs text-stone-500 mt-1">
+                  Prueba buscando con otro término o añade un nuevo postre a tu catálogo.
+                </p>
+              </div>
+            )}
 
-                  <div className="flex items-center gap-2">
+            {/* Bottom Catalog Reset Zone */}
+            <div className="pt-10 border-t border-stone-200 text-center">
+              {!showResetConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(true)}
+                  className="text-xs text-stone-400 hover:text-rose-600 transition-colors font-medium flex items-center gap-1.5 mx-auto cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Restaurar Catálogo Predeterminado de Dulce Tentación</span>
+                </button>
+              ) : (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl max-w-md mx-auto space-y-3">
+                  <p className="text-xs text-amber-900 font-bold">
+                    ⚠️ ¿Deseas restablecer los postres a los originales iniciales?
+                  </p>
+                  <div className="flex justify-center gap-2">
                     <button
                       type="button"
-                      onClick={() => handleOpenEditModal(dessert)}
-                      className="px-3 py-1.5 rounded-xl border border-stone-200 hover:border-rose-300 hover:bg-rose-50 text-stone-700 hover:text-rose-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                      onClick={handleResetCatalog}
+                      className="px-4 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold cursor-pointer"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Editar</span>
+                      Sí, Restaurar
                     </button>
-
                     <button
                       type="button"
-                      onClick={() => handleDeleteDessert(dessert.id, dessert.name)}
-                      className="p-1.5 rounded-xl text-stone-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer"
-                      title="Eliminar postre"
+                      onClick={() => setShowResetConfirm(false)}
+                      className="px-4 py-1.5 rounded-xl bg-stone-200 text-stone-800 text-xs font-bold cursor-pointer"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      Cancelar
                     </button>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          ))}
-        </div>
-
-        {/* Empty state if search has no results */}
-        {filteredDesserts.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-3xl border border-rose-100 p-8">
-            <span className="text-4xl block mb-2">🔍</span>
-            <h3 className="font-serif-display text-lg font-bold text-stone-800">No se encontraron postres</h3>
-            <p className="text-xs text-stone-500 mt-1">
-              Prueba buscando con otro término o añade un nuevo postre a tu catálogo.
-            </p>
-          </div>
-        )}
-
-        {/* Bottom Catalog Reset Zone */}
-        <div className="pt-10 border-t border-stone-200 text-center">
-          {!showResetConfirm ? (
-            <button
-              type="button"
-              onClick={() => setShowResetConfirm(true)}
-              className="text-xs text-stone-400 hover:text-rose-600 transition-colors font-medium flex items-center gap-1.5 mx-auto cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Restaurar Catálogo Predeterminado de Dulce Tentación</span>
-            </button>
-          ) : (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl max-w-md mx-auto space-y-3">
-              <p className="text-xs text-amber-900 font-bold">
-                ⚠️ ¿Deseas restablecer los postres a los originales iniciales?
-              </p>
-              <div className="flex justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleResetCatalog}
-                  className="px-4 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold cursor-pointer"
-                >
-                  Sí, Restaurar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowResetConfirm(false)}
-                  className="px-4 py-1.5 rounded-xl bg-stone-200 text-stone-800 text-xs font-bold cursor-pointer"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-        </>
+          </>
         ) : (
           /* ============================================================== */
           /* REVIEWS & VERIFIED ORDER CODES TAB */
           /* ============================================================== */
           <div className="space-y-8 animate-fadeIn">
-            
+
             {/* Reviews Header Banner */}
             <div className="bg-gradient-to-r from-[#2D1610] to-[#451B12] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg">
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -870,7 +942,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
 
             {/* Top Grid: Generator for WhatsApp orders & Stats */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
+
               {/* Box: Manual Code Generator for WhatsApp Buyers */}
               <div className="lg:col-span-6 bg-white p-6 rounded-3xl border border-rose-100 shadow-xs space-y-4">
                 <div className="flex items-center gap-2">
@@ -1008,7 +1080,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
 
             {/* List of Published Reviews with Moderation & Search */}
             <div className="bg-white rounded-3xl border border-rose-100 shadow-xs p-6 space-y-5">
-              
+
               {/* Header & Subtitle */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -1058,44 +1130,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
                   <button
                     type="button"
                     onClick={() => setReviewRatingFilter('all')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                      reviewRatingFilter === 'all'
-                        ? 'bg-stone-900 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${reviewRatingFilter === 'all'
+                      ? 'bg-stone-900 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
                   >
                     Todas ({reviews.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setReviewRatingFilter('5')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${
-                      reviewRatingFilter === '5'
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === '5'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
                   >
                     <span>5 ⭐</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setReviewRatingFilter('4')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${
-                      reviewRatingFilter === '4'
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === '4'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
                   >
                     <span>4 ⭐</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setReviewRatingFilter('with-photo')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${
-                      reviewRatingFilter === 'with-photo'
-                        ? 'bg-rose-600 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === 'with-photo'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
                   >
                     <Camera className="w-3 h-3" />
                     <span>Con Foto</span>
@@ -1108,11 +1176,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
                 {filteredReviews.map((rev) => (
                   <div
                     key={rev.id}
-                    className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-3 ${
-                      deletingReviewId === rev.id 
-                        ? 'opacity-40 bg-red-50 border-red-200 pointer-events-none' 
-                        : 'bg-stone-50/60 border-stone-200 hover:border-rose-200 hover:bg-white hover:shadow-xs'
-                    }`}
+                    className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-3 ${deletingReviewId === rev.id
+                      ? 'opacity-40 bg-red-50 border-red-200 pointer-events-none'
+                      : 'bg-stone-50/60 border-stone-200 hover:border-rose-200 hover:bg-white hover:shadow-xs'
+                      }`}
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between">
@@ -1129,7 +1196,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
                               Verificada
                             </span>
                           )}
-                          
+
                           {/* Delete Review Button */}
                           <button
                             type="button"
@@ -1186,8 +1253,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
                 <div className="text-center py-12 text-stone-400 space-y-2">
                   <MessageSquare className="w-8 h-8 mx-auto text-stone-300" />
                   <p className="text-xs font-semibold text-stone-600">
-                    {reviewSearchQuery || reviewRatingFilter !== 'all' 
-                      ? 'No se encontraron opiniones que coincidan con la búsqueda o filtro.' 
+                    {reviewSearchQuery || reviewRatingFilter !== 'all'
+                      ? 'No se encontraron opiniones que coincidan con la búsqueda o filtro.'
                       : 'No hay opiniones publicadas todavía.'}
                   </p>
                   {(reviewSearchQuery || reviewRatingFilter !== 'all') && (
@@ -1282,7 +1349,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-rose-100 my-8 animate-fadeIn">
-            
+
             {/* Modal Header */}
             <div className="p-5 bg-gradient-to-r from-rose-600 to-pink-600 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1302,7 +1369,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
 
             {/* Modal Form */}
             <form onSubmit={handleSaveDessert} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-              
+
               {/* IMAGE UPLOAD SECTION */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-stone-800 block flex items-center justify-between">
@@ -1317,18 +1384,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
                   <button
                     type="button"
                     onClick={() => setImageUploadType('file')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      imageUploadType === 'file' ? 'bg-rose-100 text-rose-800' : 'bg-stone-100 text-stone-600'
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${imageUploadType === 'file' ? 'bg-rose-100 text-rose-800' : 'bg-stone-100 text-stone-600'
+                      }`}
                   >
                     📁 Subir archivo desde Celular / PC
                   </button>
                   <button
                     type="button"
                     onClick={() => setImageUploadType('url')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      imageUploadType === 'url' ? 'bg-rose-100 text-rose-800' : 'bg-stone-100 text-stone-600'
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${imageUploadType === 'url' ? 'bg-rose-100 text-rose-800' : 'bg-stone-100 text-stone-600'
+                      }`}
                   >
                     🔗 Enlace Web de Imagen
                   </button>
@@ -1547,17 +1612,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer"
+                  disabled={isSavingCloud}
+                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
 
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-200 cursor-pointer flex items-center gap-1.5"
+                  disabled={isSavingCloud || isUploadingImage}
+                  className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-rose-200 cursor-pointer flex items-center gap-2 transition-all active:scale-98"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>{editingDessertId ? 'Guardar Cambios' : 'Publicar Postre en la Tienda'}</span>
+                  {isSavingCloud ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{editingDessertId ? 'Guardando cambios...' : 'Publicando postre...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>{editingDessertId ? 'Guardar Cambios' : 'Publicar Postre en la Tienda'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -1596,8 +1672,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
               </div>
 
               {passwordChangeSuccess && (
-                <div className="p-2 bg-emerald-50 text-emerald-800 text-xs rounded-xl font-medium text-center">
-                  ¡Contraseña actualizada con éxito!
+                <div className="p-2 bg-emerald-50 text-emerald-800 text-xs rounded-xl font-medium text-center flex items-center justify-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>¡Contraseña actualizada con éxito!</span>
                 </div>
               )}
 
@@ -1620,6 +1697,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore, onDessert
           </div>
         </div>
       )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* FLOATING ACTION NOTIFICATION TOAST (Loading / Success / Error) */}
+      {/* ------------------------------------------------------------- */}
+      {actionToast && (
+        <div className="fixed top-6 right-4 sm:right-8 z-50 max-w-md w-[calc(100%-2rem)] sm:w-auto animate-bounce-subtle pointer-events-auto">
+          <div
+            className={`px-4 py-3.5 rounded-2xl shadow-2xl border flex items-start gap-3 backdrop-blur-md transition-all duration-300 ${actionToast.type === 'loading'
+              ? 'bg-stone-900/95 text-white border-rose-500/40 shadow-rose-950/30'
+              : actionToast.type === 'success'
+                ? 'bg-emerald-900/95 text-white border-emerald-400/50 shadow-emerald-950/30'
+                : 'bg-red-900/95 text-white border-red-400/50 shadow-red-950/30'
+              }`}
+          >
+            <div className="mt-0.5 shrink-0">
+              {actionToast.type === 'loading' && (
+                <Loader2 className="w-5 h-5 text-rose-400 animate-spin" />
+              )}
+              {actionToast.type === 'success' && (
+                <div className="w-5 h-5 rounded-full bg-emerald-400 text-emerald-950 flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                </div>
+              )}
+              {actionToast.type === 'error' && (
+                <AlertCircle className="w-5 h-5 text-red-400" />
+              )}
+            </div>
+
+            <div className="flex-1 pr-2">
+              <p className="text-xs font-bold tracking-tight leading-snug">
+                {actionToast.title}
+              </p>
+              {actionToast.message && (
+                <p className="text-[11px] opacity-85 leading-tight mt-0.5">
+                  {actionToast.message}
+                </p>
+              )}
+            </div>
+
+            {actionToast.type !== 'loading' && (
+              <button
+                type="button"
+                onClick={() => setActionToast(null)}
+                className="text-white/60 hover:text-white text-xs p-1 -mr-1 rounded-md transition-colors"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
