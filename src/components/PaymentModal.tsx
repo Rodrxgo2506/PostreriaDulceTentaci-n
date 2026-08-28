@@ -116,6 +116,26 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       return;
     }
 
+    // Mandatory Security Code / Operation Number Validation
+    if (!yapeOpNumber.trim()) {
+      const err = '⚠️ ¡Atención! Es obligatorio ingresar el Código de Seguridad o Número de Operación de tu Yape / Plin.';
+      setAlertError(err);
+      return;
+    }
+
+    if (yapeOpNumber.trim().length < 4) {
+      const err = '⚠️ ¡Atención! Por favor ingresa un Código de Operación válido de Yape o Plin (mínimo 4 dígitos).';
+      setAlertError(err);
+      return;
+    }
+
+    // Mandatory Receipt Image Validation
+    if (!receiptImage) {
+      const err = '⚠️ ¡Atención! Es obligatorio adjuntar la foto o captura de pantalla del comprobante de pago de Yape / Plin.';
+      setAlertError(err);
+      return;
+    }
+
     setIsProcessing(true);
 
     const generatedOrderId = `DT-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -491,23 +511,40 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
                 {/* Operation Code */}
                 <div>
-                  <label className="text-[11px] font-bold text-purple-950 block mb-1">
-                    Código de seguridad del comprobante de Yape / Plin (Opcional):
+                  <label className="text-[11px] font-bold text-purple-950 block mb-1 flex items-center justify-between">
+                    <span>🔢 Código de Seguridad / N° de Operación *</span>
+                    <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wide">Obligatorio</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Ej. 286"
+                    required
+                    placeholder="Ej. 984521 (Código que aparece en tu Yape o Plin)"
                     value={yapeOpNumber}
-                    onChange={(e) => setYapeOpNumber(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono text-stone-900"
+                    onChange={(e) => {
+                      setYapeOpNumber(e.target.value);
+                      if (alertError) setAlertError(null);
+                    }}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono text-stone-900 ${alertError && (!yapeOpNumber.trim() || yapeOpNumber.trim().length < 4)
+                      ? 'border-red-400 ring-1 ring-red-300'
+                      : 'border-purple-200'
+                      }`}
                   />
+                  <span className="text-[10px] text-stone-500 block mt-1">
+                    Ingresa los dígitos de seguridad o número de operación emitido por tu app bancaria.
+                  </span>
                 </div>
 
                 {/* Subir Comprobante / Voucher Upload */}
                 <div className="pt-1">
                   <label className="text-[11px] font-bold text-purple-950 block mb-1.5 flex items-center justify-between">
-                    <span>📸 Subir Foto / Captura del Comprobante (Recomendado):</span>
-                    {receiptImage && <span className="text-emerald-600 text-[10px] font-bold">✓ Imagen Cargada</span>}
+                    <span>📸 Foto / Captura de Pantalla del Comprobante *</span>
+                    {receiptImage ? (
+                      <span className="text-emerald-600 text-[10px] font-bold flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> Imagen Adjunta
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wide">Obligatorio</span>
+                    )}
                   </label>
 
                   <input
@@ -519,15 +556,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   />
 
                   {receiptImage ? (
-                    <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-purple-200 shadow-xs">
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border-2 border-emerald-300 shadow-xs">
                       <img
                         src={receiptImage}
                         alt="Comprobante"
                         className="w-14 h-14 object-cover rounded-xl border border-purple-100 shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="text-xs font-bold text-stone-800 block truncate">Comprobante de Pago</span>
-                        <span className="text-[10px] text-stone-500">Se guardará automáticamente con tu pedido</span>
+                        <span className="text-xs font-bold text-stone-800 block truncate">Comprobante de Pago Adjuntado</span>
+                        <span className="text-[10px] text-emerald-700 font-semibold">Listo para verificación</span>
                       </div>
                       <button
                         type="button"
@@ -536,7 +573,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                           if (fileInputRef.current) fileInputRef.current.value = '';
                         }}
                         className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-                        title="Eliminar foto"
+                        title="Eliminar foto y volver a subir"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -546,7 +583,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       type="button"
                       disabled={isUploadingReceipt}
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full p-3.5 border-2 border-dashed border-purple-300 hover:border-purple-500 bg-white/70 hover:bg-white rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer text-purple-900 group"
+                      className={`w-full p-3.5 border-2 border-dashed rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer group ${alertError && !receiptImage
+                        ? 'border-red-400 bg-red-50/50 hover:bg-red-50 text-red-900'
+                        : 'border-purple-300 hover:border-purple-500 bg-white/70 hover:bg-white text-purple-900'
+                        }`}
                     >
                       {isUploadingReceipt ? (
                         <div className="flex items-center gap-2 text-xs font-semibold">
@@ -558,8 +598,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                           <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <Upload className="w-4 h-4" />
                           </div>
-                          <span className="text-xs font-bold">Adjuntar captura o foto de Yape / Plin</span>
-                          <span className="text-[10px] text-purple-600">Haz clic aquí para seleccionar el archivo</span>
+                          <span className="text-xs font-bold">Subir foto o captura del comprobante Yape / Plin</span>
+                          <span className="text-[10px] text-purple-600">Haz clic aquí para seleccionar el archivo (JPG, PNG)</span>
                         </>
                       )}
                     </button>
@@ -567,10 +607,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 </div>
 
                 {/* Info Note */}
-                <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Importante:</strong> Al confirmar, tu pedido pasará a la lista de pedidos de la tienda y se abrirá WhatsApp con todos los detalles.
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">
+                    <strong>Verificación de Seguridad:</strong> El código y la captura adjuntada serán verificados en el sistema antes de iniciar la preparación de tu postre.
                   </span>
                 </div>
               </div>
