@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, MessageCircle, Star } from 'lucide-react';
+import { Sparkles, MessageCircle, Star, Clock } from 'lucide-react';
 import { StoreConfig, HeroShowcaseCard } from '../types';
 import { DEFAULT_STORE_CONFIG, DEFAULT_HERO_CARDS } from '../utils/storeConfigStorage';
 import { createWhatsAppUrl } from '../utils/whatsapp';
@@ -18,6 +18,7 @@ export const Hero: React.FC<HeroProps> = ({
   const bakerySubtitle = storeConfig.bakerySubtitle || DEFAULT_STORE_CONFIG.bakerySubtitle;
   const heroDescription = storeConfig.heroDescription || `${bakerySlogan} · Postres caseros preparados a diario con la más fina dedicación`;
   const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
+  const hours = storeConfig.hours || DEFAULT_STORE_CONFIG.hours || 'Sábado a Domingo: 2:00 PM - 8:00 PM';
 
   const heroCards: HeroShowcaseCard[] = Array.isArray(storeConfig.heroCards) && storeConfig.heroCards.length > 0
     ? storeConfig.heroCards
@@ -78,6 +79,17 @@ export const Hero: React.FC<HeroProps> = ({
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-rose-100/50 via-pink-50/20 to-transparent pointer-events-none rounded-full blur-3xl -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Business Hours Badge requested right above the Hero card */}
+        <div className="flex justify-center mb-4 sm:mb-5">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-rose-200/90 shadow-sm text-stone-700 text-xs sm:text-sm font-medium hover:border-rose-300 transition-all">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Clock className="w-3.5 h-3.5 text-rose-600" />
+            <span>
+              <strong className="text-stone-900 font-bold">Horario de Atención:</strong> {hours}
+            </span>
+          </div>
+        </div>
 
         {/* Main Boutique Hero Card Container */}
         <div className="bg-white rounded-3xl sm:rounded-[36px] border border-rose-100/80 p-6 sm:p-10 lg:p-12 shadow-xl shadow-rose-900/5 relative overflow-hidden">

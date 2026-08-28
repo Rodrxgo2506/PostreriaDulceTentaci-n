@@ -16,6 +16,7 @@ export const Footer: React.FC<FooterProps> = ({
   const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
   const address = storeConfig.address || DEFAULT_STORE_CONFIG.address;
   const reference = storeConfig.reference || DEFAULT_STORE_CONFIG.reference;
+  const hours = storeConfig.hours || DEFAULT_STORE_CONFIG.hours || 'Sábado a Domingo: 2:00 PM - 8:00 PM';
 
   return (
     <footer className="bg-[#1E0F0A] text-stone-300 pt-16 pb-12 border-t border-stone-800">
@@ -79,6 +80,7 @@ export const Footer: React.FC<FooterProps> = ({
             <p className="text-xs text-stone-400 leading-relaxed">
               📍 {address} <br />
               <span className="text-rose-300">({reference})</span> <br />
+              🕒 {hours} <br />
               📱 WhatsApp: <strong className="text-white">{phoneFormatted}</strong>
             </p>
 

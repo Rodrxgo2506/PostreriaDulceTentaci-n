@@ -51,7 +51,7 @@ export const DEFAULT_STORE_CONFIG: StoreConfig = {
     phoneNumber: '51965255201',
     address: 'Jirón Manco Cápac 653',
     reference: 'Por el Seguro de Salud',
-    hours: 'Lunes a Domingo: 10:00 AM - 9:00 PM',
+    hours: 'Sábado a Domingo: 2:00 PM - 8:00 PM',
     deliveryPromoThreshold: 2,
     defaultDeliveryFee: 4.00,
     deliveryPromoText: 'A partir de 2 unidades',

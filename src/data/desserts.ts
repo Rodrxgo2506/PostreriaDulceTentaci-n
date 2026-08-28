@@ -152,6 +152,6 @@ export const BAKERY_PHONE_FORMATTED = '965 255 201';
 export const BAKERY_EMAIL = 'pedidos@dulcetentacion.pe';
 export const BAKERY_ADDRESS = 'Jirón Manco Cápac 653';
 export const BAKERY_REFERENCE = 'Por el Seguro de Salud';
-export const BAKERY_HOURS = 'Lunes a Domingo: 10:00 AM - 9:00 PM';
+export const BAKERY_HOURS = 'Sábado a Domingo: 2:00 PM - 8:00 PM';
 export const DELIVERY_PROMO_THRESHOLD = 2; // Delivery free with 2 or more units
 export const DEFAULT_DELIVERY_FEE = 4.00; // S/ 4.00 if only 1 unit

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Phone, MessageCircle, Send, Sparkles } from 'lucide-react';
+import { MapPin, Phone, MessageCircle, Send, Sparkles, Clock } from 'lucide-react';
 import { StoreConfig } from '../types';
 import { DEFAULT_STORE_CONFIG } from '../utils/storeConfigStorage';
 import { createWhatsAppUrl } from '../utils/whatsapp';
@@ -19,6 +19,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
   const phoneNumber = storeConfig.phoneNumber || DEFAULT_STORE_CONFIG.phoneNumber;
   const address = storeConfig.address || DEFAULT_STORE_CONFIG.address;
   const reference = storeConfig.reference || DEFAULT_STORE_CONFIG.reference;
+  const hours = storeConfig.hours || DEFAULT_STORE_CONFIG.hours || 'Sábado a Domingo: 2:00 PM - 8:00 PM';
 
   const handleSendQuickInquiry = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +76,17 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                   <span className="font-bold text-[#2D1610] block text-sm">Dirección</span>
                   <span className="text-stone-700 font-semibold">{address}</span>
                   <span className="text-xs text-rose-600 block mt-0.5 font-medium">Referencia: {reference}</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-stone-200/80">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-[#2D1610] block text-sm">Horario de Atención</span>
+                  <span className="text-stone-800 font-bold text-sm">{hours}</span>
+                  <span className="text-xs text-stone-500 block mt-0.5">Pedidos y recojos programados</span>
                 </div>
               </div>
 
