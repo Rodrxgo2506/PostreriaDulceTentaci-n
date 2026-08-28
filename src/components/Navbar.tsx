@@ -186,10 +186,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-navbar-whatsapp"
               onClick={handleWhatsAppDirect}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 hover:shadow-md transition-all transform hover:scale-102 active:scale-95 cursor-pointer"
+              className="p-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs hover:shadow-md transition-all transform hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center"
+              title={`WhatsApp: ${phoneFormatted}`}
+              aria-label="Contactar por WhatsApp"
             >
-              <MessageCircle className="w-3.5 h-3.5 fill-white" />
-              <span>{phoneFormatted}</span>
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 fill-white" />
             </button>
 
             {/* Mobile Menu Toggle */}
