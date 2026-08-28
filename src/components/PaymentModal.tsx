@@ -492,11 +492,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 {/* Operation Code */}
                 <div>
                   <label className="text-[11px] font-bold text-purple-950 block mb-1">
-                    Número de Operación de Yape / Plin (Opcional):
+                    Código de seguridad del comprobante de Yape / Plin (Opcional):
                   </label>
                   <input
                     type="text"
-                    placeholder="Ej. 984521"
+                    placeholder="Ej. 286"
                     value={yapeOpNumber}
                     onChange={(e) => setYapeOpNumber(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono text-stone-900"
