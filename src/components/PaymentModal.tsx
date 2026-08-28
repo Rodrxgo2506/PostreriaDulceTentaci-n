@@ -465,11 +465,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     onClick={() => setIsZoomingQr(true)}
                   >
                     <img
-                      src="/images/qr.jpg"
+                      src="/images/qr.png"
                       alt="QR de Pago Yape / Plin"
                       className="w-44 h-44 object-contain rounded-lg transition-transform group-hover:scale-105"
                       onError={(e) => {
-                        // Fallback in case qr.jpg has caching issues
+                        // Fallback in case qr.png has issues
                         (e.target as HTMLImageElement).src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=YAPE-DULCE-TENTACION-${BAKERY_PHONE_NUMBER}`;
                       }}
                     />
@@ -485,7 +485,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
                 <div className="text-xs text-purple-950 text-center space-y-1 bg-white/90 p-3 rounded-2xl border border-purple-100">
                   <p className="font-extrabold text-sm text-purple-900">📱 Número: {BAKERY_PHONE_FORMATTED}</p>
-                  <p className="font-medium text-stone-700">Titular: Mitsy Danixa Reategui Rodriguez</p>
+                  <p className="font-medium text-stone-700">Titular: Dulce Tentación</p>
                   <p className="text-xs text-rose-600 font-black">Monto exacto a transferir: S/ {total.toFixed(2)}</p>
                 </div>
 
