@@ -62,9 +62,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="brand-logo"
             className="flex items-center gap-3 group focus:outline-none"
           >
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-pink-600 flex items-center justify-center text-white shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform duration-300">
-              <Sparkles className="w-5 h-5 text-rose-100" />
-            </div>
+            <img
+              src="/images/icon.png"
+              alt={bakeryName}
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover shadow-sm group-hover:scale-105 transition-transform duration-300 border border-rose-200/60 bg-white"
+              referrerPolicy="no-referrer"
+            />
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="font-serif-display text-2xl sm:text-[26px] font-bold tracking-tight text-[#2D1610] group-hover:text-rose-600 transition-colors leading-none">

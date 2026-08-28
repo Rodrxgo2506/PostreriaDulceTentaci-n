@@ -642,9 +642,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="min-h-screen bg-[#FFF8F8] flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-rose-100 shadow-xl space-y-6 text-center">
 
-          <div className="w-16 h-16 bg-rose-50 rounded-2xl border border-rose-200 flex items-center justify-center mx-auto text-3xl">
-            👑
-          </div>
+          <img
+            src="/images/icon.png"
+            alt="Logo"
+            className="w-16 h-16 rounded-full object-cover border-2 border-rose-200 shadow-md mx-auto bg-white"
+            referrerPolicy="no-referrer"
+          />
 
           <div className="space-y-1">
             <span className="text-xs font-bold text-rose-600 uppercase tracking-widest bg-rose-50 px-3 py-1 rounded-full">
@@ -722,9 +725,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
 
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center text-lg shadow-sm">
-              🍰
-            </div>
+            <img
+              src="/images/icon.png"
+              alt="Logo"
+              className="w-9 h-9 rounded-full object-cover border border-rose-200 shadow-sm bg-white"
+              referrerPolicy="no-referrer"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-serif-display font-bold text-base sm:text-lg text-stone-900">

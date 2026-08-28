@@ -27,9 +27,12 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Col 1: Brand Info (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-600 flex items-center justify-center text-white shadow-xs">
-                <Sparkles className="w-5 h-5 text-rose-100" />
-              </div>
+              <img
+                src="/images/icon.png"
+                alt={bakeryName}
+                className="w-10 h-10 rounded-full object-cover shadow-xs border border-rose-300/40 bg-white"
+                referrerPolicy="no-referrer"
+              />
               <span className="font-serif-display text-2xl font-bold text-white tracking-wide">
                 {bakeryName}
               </span>
