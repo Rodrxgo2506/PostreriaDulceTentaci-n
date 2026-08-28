@@ -25,7 +25,7 @@ import {
 import {
   subscribeToOrders, updateOrderStatusInCloud, deleteOrderFromCloud, getCachedOrders
 } from '../utils/ordersStorage';
-import { BAKERY_NAME, BAKERY_PHONE_FORMATTED, BAKERY_PHONE_NUMBER } from '../data/desserts';
+import { BAKERY_NAME, BAKERY_PHONE_FORMATTED, BAKERY_PHONE_NUMBER, BAKERY_ADDRESS } from '../data/desserts';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
 interface ToastNotice {
@@ -896,6 +896,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex items-center gap-2 border-b border-stone-200 pb-3 overflow-x-auto">
           <button
             type="button"
+            onClick={() => setActiveTab('orders')}
+            className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'orders'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>📦 Pedidos y Pagos Yape ({orders.length})</span>
+            {pendingOrdersCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 font-black text-[10px] animate-pulse">
+                {pendingOrdersCount} pendientes
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('catalog')}
             className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'catalog'
               ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
@@ -932,6 +949,384 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <span>⭐ Opiniones Verificadas ({reviews.length})</span>
           </button>
         </div>
+
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 1: ORDERS & YAPE PAYMENTS */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === 'orders' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Header Banner */}
+            <div className="bg-gradient-to-r from-purple-950 via-stone-900 to-rose-950 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg border border-purple-900/40">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-xl">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 text-xs font-bold border border-purple-400/30">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Control de Pedidos y Comprobantes Yape/Plin</span>
+                  </div>
+                  <h1 className="font-serif-display text-2xl sm:text-3xl lg:text-4xl font-bold">
+                    Pedidos de Clientes en Vivo
+                  </h1>
+                  <p className="text-stone-300 text-xs sm:text-sm">
+                    Revisa las órdenes recibidas desde la pasarela web con sus comprobantes de pago adjuntos, actualiza el estado de preparación y contacta al cliente directamente por WhatsApp.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 text-center">
+                    <span className="text-[11px] text-purple-200 uppercase font-bold tracking-wider block">Ingresos Totales</span>
+                    <span className="font-serif-display text-2xl font-black text-white mt-0.5 block">
+                      S/ {totalOrdersRevenue.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Metric counters */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div
+                onClick={() => setOrderStatusFilter('pending')}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer ${orderStatusFilter === 'pending'
+                  ? 'bg-amber-500 text-white border-amber-600 shadow-md'
+                  : 'bg-white text-stone-900 border-amber-200 hover:border-amber-400'
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${orderStatusFilter === 'pending' ? 'text-amber-100' : 'text-amber-800'}`}>
+                    Pendientes
+                  </span>
+                  <Clock className="w-4 h-4 opacity-80" />
+                </div>
+                <span className="font-serif-display text-2xl sm:text-3xl font-black mt-1 block">
+                  {pendingOrdersCount}
+                </span>
+                <span className={`text-[10px] mt-0.5 block ${orderStatusFilter === 'pending' ? 'text-amber-100' : 'text-stone-500'}`}>
+                  Requieren confirmación
+                </span>
+              </div>
+
+              <div
+                onClick={() => setOrderStatusFilter('preparing')}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer ${orderStatusFilter === 'preparing'
+                  ? 'bg-purple-600 text-white border-purple-700 shadow-md'
+                  : 'bg-white text-stone-900 border-purple-200 hover:border-purple-400'
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${orderStatusFilter === 'preparing' ? 'text-purple-100' : 'text-purple-800'}`}>
+                    En Preparación
+                  </span>
+                  <Package className="w-4 h-4 opacity-80" />
+                </div>
+                <span className="font-serif-display text-2xl sm:text-3xl font-black mt-1 block">
+                  {preparingOrdersCount}
+                </span>
+                <span className={`text-[10px] mt-0.5 block ${orderStatusFilter === 'preparing' ? 'text-purple-100' : 'text-stone-500'}`}>
+                  En repostería
+                </span>
+              </div>
+
+              <div
+                onClick={() => setOrderStatusFilter('completed')}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer ${orderStatusFilter === 'completed'
+                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-md'
+                  : 'bg-white text-stone-900 border-emerald-200 hover:border-emerald-400'
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${orderStatusFilter === 'completed' ? 'text-emerald-100' : 'text-emerald-800'}`}>
+                    Entregados / Listos
+                  </span>
+                  <CheckCheck className="w-4 h-4 opacity-80" />
+                </div>
+                <span className="font-serif-display text-2xl sm:text-3xl font-black mt-1 block">
+                  {completedOrdersCount}
+                </span>
+                <span className={`text-[10px] mt-0.5 block ${orderStatusFilter === 'completed' ? 'text-emerald-100' : 'text-stone-500'}`}>
+                  Despachados con éxito
+                </span>
+              </div>
+
+              <div
+                onClick={() => setOrderStatusFilter('all')}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer ${orderStatusFilter === 'all'
+                  ? 'bg-stone-900 text-white border-stone-950 shadow-md'
+                  : 'bg-white text-stone-900 border-stone-200 hover:border-stone-400'
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${orderStatusFilter === 'all' ? 'text-stone-300' : 'text-stone-600'}`}>
+                    Todos los Pedidos
+                  </span>
+                  <FileText className="w-4 h-4 opacity-80" />
+                </div>
+                <span className="font-serif-display text-2xl sm:text-3xl font-black mt-1 block">
+                  {orders.length}
+                </span>
+                <span className={`text-[10px] mt-0.5 block ${orderStatusFilter === 'all' ? 'text-stone-300' : 'text-stone-500'}`}>
+                  Historial completo
+                </span>
+              </div>
+            </div>
+
+            {/* Filter toolbar and Search */}
+            <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={orderSearchQuery}
+                  onChange={(e) => setOrderSearchQuery(e.target.value)}
+                  placeholder="Buscar por N° de orden (#DT-123456), nombre de cliente, teléfono, postre..."
+                  className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-stone-50/50"
+                />
+                {orderSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setOrderSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                {[
+                  { id: 'all', label: 'Todos' },
+                  { id: 'pending', label: `⏳ Pendientes (${pendingOrdersCount})` },
+                  { id: 'preparing', label: `🧁 En Preparación (${preparingOrdersCount})` },
+                  { id: 'completed', label: `✅ Entregados (${completedOrdersCount})` },
+                  { id: 'cancelled', label: `❌ Cancelados (${cancelledOrdersCount})` },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setOrderStatusFilter(st.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${orderStatusFilter === st.id
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Orders Cards List */}
+            {filteredOrders.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-stone-200 p-12 text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-stone-100 text-stone-400 flex items-center justify-center mx-auto">
+                  <Package className="w-8 h-8" />
+                </div>
+                <h3 className="font-serif-display text-lg font-bold text-stone-800">
+                  {orders.length === 0 ? 'Aún no hay pedidos registrados' : 'No se encontraron pedidos con ese filtro'}
+                </h3>
+                <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                  {orders.length === 0
+                    ? 'Cuando los clientes confirmen sus compras mediante la pasarela de Yape/Plin o carrito, los pedidos aparecerán aquí automáticamente en tiempo real.'
+                    : 'Intenta limpiar el término de búsqueda o cambiar el filtro de estado.'}
+                </p>
+                {orderSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => { setOrderSearchQuery(''); setOrderStatusFilter('all'); }}
+                    className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    Limpiar Búsqueda
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {filteredOrders.map((order) => {
+                  const orderDate = new Date(order.createdAt || 0);
+                  const formattedDate = !isNaN(orderDate.getTime())
+                    ? orderDate.toLocaleString('es-PE', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short'
+                    })
+                    : 'Fecha no registrada';
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="bg-white rounded-3xl border border-stone-200 shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between"
+                    >
+                      {/* Top bar with Order ID and Status badge */}
+                      <div className="p-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/60">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-sm text-stone-900 bg-white px-2.5 py-1 rounded-lg border border-stone-200 shadow-2xs">
+                              #{order.id}
+                            </span>
+                            <span className="text-[11px] text-stone-500 font-medium">
+                              {formattedDate}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status badge selector */}
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={order.status}
+                            onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border focus:outline-none cursor-pointer ${order.status === 'pending'
+                              ? 'bg-amber-100 text-amber-900 border-amber-300'
+                              : order.status === 'preparing'
+                                ? 'bg-purple-100 text-purple-900 border-purple-300'
+                                : order.status === 'completed'
+                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                  : 'bg-stone-100 text-stone-600 border-stone-300'
+                              }`}
+                          >
+                            <option value="pending">⏳ Pendiente</option>
+                            <option value="preparing">🧁 En Preparación</option>
+                            <option value="completed">✅ Entregado / Listo</option>
+                            <option value="cancelled">❌ Cancelado</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Body Details */}
+                      <div className="p-5 space-y-4 flex-1">
+                        {/* Customer Information */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-rose-50/40 p-3.5 rounded-2xl border border-rose-100">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase text-stone-400 block">Cliente:</span>
+                            <span className="font-bold text-stone-900 text-sm block">{order.customerName}</span>
+                            <a
+                              href={`tel:${order.phone}`}
+                              className="text-stone-600 hover:text-rose-600 text-xs font-mono font-medium block mt-0.5"
+                            >
+                              📱 {order.phone}
+                            </a>
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] font-bold uppercase text-stone-400 block">Modalidad:</span>
+                            <span className="font-bold text-stone-900 block">
+                              {order.deliveryType === 'pickup' ? '🏪 Recojo en Tienda' : '🛵 Envío a Domicilio'}
+                            </span>
+                            <span className="text-stone-600 text-[11px] block mt-0.5 leading-tight">
+                              {order.address || 'Tienda Principal Dulce Tentación'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Payment & Receipt details */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-purple-50/60 rounded-2xl border border-purple-100 text-xs">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase text-purple-900 block">Método de Pago:</span>
+                            <span className="font-bold text-purple-950">
+                              {order.paymentMethod || 'Yape / Plin'}
+                            </span>
+                            {order.yapeOpNumber && (
+                              <span className="font-mono text-[11px] text-purple-700 block font-semibold">
+                                N° Op: {order.yapeOpNumber}
+                              </span>
+                            )}
+                          </div>
+
+                          {order.receiptImageUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReceiptModal(order.receiptImageUrl || null)}
+                              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                              <ZoomIn className="w-3.5 h-3.5" />
+                              <span>Ver Comprobante</span>
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-stone-400 italic">
+                              Sin foto adjunta
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Order Items List */}
+                        <div className="space-y-2">
+                          <span className="text-[10px] font-bold uppercase text-stone-400 tracking-wider block">
+                            Postres Pedidos ({order.items.reduce((acc, it) => acc + (it.quantity || 1), 0)} items):
+                          </span>
+                          <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-stone-50 border border-stone-100 text-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {item.image && (
+                                    <img
+                                      src={item.image}
+                                      alt={item.name}
+                                      className="w-9 h-9 object-cover rounded-lg shrink-0 border border-stone-200"
+                                    />
+                                  )}
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-stone-900 block truncate">
+                                      {item.name} <span className="text-rose-600 font-black">x{item.quantity}</span>
+                                    </span>
+                                    {item.customDedication && (
+                                      <span className="text-[10px] text-stone-500 italic block truncate">
+                                        Dedicatoria: "{item.customDedication}"
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="font-bold font-mono text-stone-800 shrink-0 ml-2">
+                                  S/ {((item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Notes if any */}
+                        {order.notes && (
+                          <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-100 text-xs text-amber-900">
+                            <strong className="block text-[10px] uppercase">Nota del cliente:</strong>
+                            <p className="italic">{order.notes}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] text-stone-400 block font-bold uppercase">Total Pagado:</span>
+                          <span className="font-serif-display text-lg font-black text-rose-600">
+                            S/ {(order.total || 0).toFixed(2)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleNotifyCustomerWhatsApp(order)}
+                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            title="Enviar mensaje de estado a WhatsApp del cliente"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={deletingOrderId === order.id}
+                            onClick={() => handleDeleteOrder(order.id, order.customerName)}
+                            className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                            title="Eliminar este pedido"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === 'catalog' && (
           <>
@@ -2603,6 +2998,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* RECEIPT IMAGE ZOOM MODAL */}
+      {/* ------------------------------------------------------------- */}
+      {selectedReceiptModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-stone-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-stone-700 animate-fadeIn">
+            <div className="p-4 border-b border-stone-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-400" />
+                <h3 className="font-bold text-sm">Comprobante de Pago Yape / Plin</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReceiptModal(null)}
+                className="w-8 h-8 rounded-xl bg-stone-800 text-stone-300 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-stone-950/60 min-h-[300px]">
+              <img
+                src={selectedReceiptModal}
+                alt="Comprobante de pago"
+                className="max-h-[70vh] w-auto max-w-full object-contain rounded-xl shadow-lg border border-stone-800"
+              />
+            </div>
+            <div className="p-3.5 bg-stone-900 border-t border-stone-800 flex items-center justify-end gap-2">
+              <a
+                href={selectedReceiptModal}
+                download="comprobante-pago.jpg"
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Descargar Imagen</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setSelectedReceiptModal(null)}
+                className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
