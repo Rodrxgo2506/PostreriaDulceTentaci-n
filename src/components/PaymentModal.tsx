@@ -628,7 +628,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               </button>
             </div>
             <img
-              src="/images/qr.jpg"
+              src="/images/qr.png"
               alt="QR Ampliado"
               className="w-full max-h-80 object-contain rounded-2xl mx-auto"
             />
