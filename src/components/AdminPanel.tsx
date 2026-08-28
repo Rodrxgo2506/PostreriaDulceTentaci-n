@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Dessert, Category, Review, OrderVerification, StoreConfig, HeroShowcaseCard } from '../types';
+import { Dessert, Category, Review, OrderVerification, StoreConfig, HeroShowcaseCard, CustomerOrderRecord, OrderStatus } from '../types';
 import {
   Plus, Edit3, Trash2, Image as ImageIcon, Upload, Check, Lock,
   Eye, LogOut, Sparkles, AlertCircle, ArrowLeft, Key,
   Share2, CheckCircle2, DollarSign, Tag, RefreshCw, X, Shield, Cloud,
   Star, MessageSquare, Ticket, Copy, Send, Camera, ShieldCheck, Search, Filter,
   Loader2, Store, Megaphone, Phone, MapPin, Sliders, Heart, ChevronUp, ChevronDown,
-  Layers, Palette
+  Layers, Palette, Package, Clock, CheckCheck, FileText, ZoomIn, Download, ExternalLink
 } from 'lucide-react';
 import {
   getStoredDesserts, addDessertToCloud, updateDessertInCloud, deleteDessertFromCloud,
@@ -22,6 +22,9 @@ import {
   DEFAULT_STORE_CONFIG, DEFAULT_HERO_CARDS, getStoredStoreConfig, updateStoreConfigInCloud,
   resetStoreConfigInCloud, subscribeToStoreConfig
 } from '../utils/storeConfigStorage';
+import {
+  subscribeToOrders, updateOrderStatusInCloud, deleteOrderFromCloud, getCachedOrders
+} from '../utils/ordersStorage';
 import { BAKERY_NAME, BAKERY_PHONE_FORMATTED, BAKERY_PHONE_NUMBER } from '../data/desserts';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 
@@ -45,8 +48,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   storeConfig = DEFAULT_STORE_CONFIG,
   onStoreConfigUpdated
 }) => {
-  // Navigation tabs: Catalog, Store Info, Reviews
-  const [activeTab, setActiveTab] = useState<'catalog' | 'store_info' | 'reviews'>('catalog');
+  // Navigation tabs: Orders, Catalog, Store Info, Reviews
+  const [activeTab, setActiveTab] = useState<'orders' | 'catalog' | 'store_info' | 'reviews'>('orders');
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -88,6 +91,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Link copy notification
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Orders State (Pending orders & receipts from checkout)
+  const [orders, setOrders] = useState<CustomerOrderRecord[]>(() => getCachedOrders());
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'completed' | 'cancelled'>('all');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [selectedReceiptModal, setSelectedReceiptModal] = useState<string | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+
   // Desserts Data State
   const [desserts, setDesserts] = useState<Dessert[]>(() => getStoredDesserts());
   const [searchQuery, setSearchQuery] = useState('');
@@ -112,6 +122,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Sync with Firestore in real-time
   useEffect(() => {
+    const unsubOrders = subscribeToOrders((cloudOrders) => {
+      setOrders(cloudOrders);
+    });
+
     const unsubDesserts = subscribeToDesserts((cloudDesserts) => {
       setDesserts(cloudDesserts);
       onDessertsUpdated(cloudDesserts);
@@ -132,6 +146,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     refreshOrderCodes();
 
     return () => {
+      unsubOrders();
       unsubDesserts();
       unsubReviews();
       unsubConfig();
@@ -634,6 +649,80 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     return matchesSearch && matchesCategory;
   });
 
+  // Orders Calculations and Handlers
+  const pendingOrdersCount = orders.filter((o) => o.status === 'pending').length;
+  const preparingOrdersCount = orders.filter((o) => o.status === 'preparing').length;
+  const completedOrdersCount = orders.filter((o) => o.status === 'completed').length;
+  const cancelledOrdersCount = orders.filter((o) => o.status === 'cancelled').length;
+  const totalOrdersRevenue = orders
+    .filter((o) => o.status !== 'cancelled')
+    .reduce((acc, o) => acc + (o.total || 0), 0);
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesFilter = orderStatusFilter === 'all' ? true : order.status === orderStatusFilter;
+    const q = orderSearchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      order.id.toLowerCase().includes(q) ||
+      order.customerName.toLowerCase().includes(q) ||
+      order.phone.includes(q) ||
+      (order.yapeOpNumber && order.yapeOpNumber.toLowerCase().includes(q)) ||
+      order.items.some((i) => i.name.toLowerCase().includes(q));
+    return matchesFilter && matchesSearch;
+  });
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    const success = await updateOrderStatusInCloud(orderId, newStatus);
+    if (success) {
+      const statusLabels: Record<OrderStatus, string> = {
+        pending: 'Pendiente',
+        preparing: 'En Preparación',
+        completed: 'Entregado / Listo',
+        cancelled: 'Cancelado',
+      };
+      showSuccessToast('Estado actualizado', `El pedido #${orderId} ahora figura como: "${statusLabels[newStatus]}".`);
+    } else {
+      showErrorToast('Error', 'No se pudo actualizar el estado.');
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string, customerName: string) => {
+    if (!window.confirm(`¿Estás seguro de eliminar el pedido #${orderId} de ${customerName}?`)) {
+      return;
+    }
+    setDeletingOrderId(orderId);
+    const success = await deleteOrderFromCloud(orderId);
+    setDeletingOrderId(null);
+    if (success) {
+      showSuccessToast('Pedido eliminado', `El pedido #${orderId} ha sido retirado.`);
+    } else {
+      showErrorToast('Error', 'No se pudo eliminar el pedido.');
+    }
+  };
+
+  const handleNotifyCustomerWhatsApp = (order: CustomerOrderRecord) => {
+    const cleanPhone = order.phone.replace(/\D/g, '');
+    let msg = `🌸 *¡Hola ${order.customerName}!* Te saludamos de *${BAKERY_NAME}* 🍰\n\n`;
+    if (order.status === 'pending') {
+      msg += `Hemos recibido tu pedido *#${order.id}* con pago por Yape/Plin.\n`;
+      msg += `Tu pago está registrado y estamos procesando tu orden de inmediato. 💕\n\n`;
+    } else if (order.status === 'preparing') {
+      msg += `Tu pedido *#${order.id}* ya está *¡En Preparación!* 🧁\n`;
+      msg += `Nuestros reposteros están alistando tus postres con insumos frescos del día.\n\n`;
+    } else if (order.status === 'completed') {
+      msg += `Tu pedido *#${order.id}* está *¡Listo y Entregado!* 🎉\n`;
+      msg += `Esperamos que lo disfrutes al máximo. Recuerda que puedes dejarnos tu opinión en nuestra web usando tu código *#${order.id}*.\n\n`;
+    } else {
+      msg += `Te contactamos respecto a tu pedido *#${order.id}*.\n\n`;
+    }
+    msg += `📦 *Detalle:* ${order.items.map((i) => `${i.name} (x${i.quantity})`).join(', ')}\n`;
+    msg += `💰 *Total:* S/ ${order.total.toFixed(2)}\n`;
+    msg += `📍 *Modalidad:* ${order.deliveryType === 'pickup' ? `Recojo en Tienda (${BAKERY_ADDRESS})` : `Envío a: ${order.address || 'Domicilio'}`}\n\n`;
+    msg += `¡Muchas gracias por elegirnos! ✨`;
+
+    const targetPhone = cleanPhone && cleanPhone.length >= 9 ? cleanPhone : BAKERY_PHONE_NUMBER;
+    window.open(createWhatsAppUrl(targetPhone, msg), '_blank', 'noopener,noreferrer');
+  };
+
   // -------------------------------------------------------------
   // LOGIN SCREEN
   // -------------------------------------------------------------
@@ -809,8 +898,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             type="button"
             onClick={() => setActiveTab('catalog')}
             className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'catalog'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
-                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
               }`}
           >
             <span>🍰 Catálogo de Postres ({desserts.length})</span>
@@ -820,8 +909,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             type="button"
             onClick={() => setActiveTab('store_info')}
             className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'store_info'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
-                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
               }`}
           >
             <Store className="w-4 h-4" />
@@ -835,8 +924,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               refreshOrderCodes();
             }}
             className={`px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'reviews'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
-                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
               }`}
           >
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
@@ -931,8 +1020,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setSelectedCategoryFilter(cat.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${selectedCategoryFilter === cat.id
-                        ? 'bg-rose-600 text-white shadow-xs'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     {cat.label}
@@ -1495,8 +1584,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 type="button"
                                 onClick={() => handleUpdateHeroCard(card.id, { accentColor: c.key })}
                                 className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 border transition-all cursor-pointer ${(card.accentColor || 'rose') === c.key
-                                    ? 'bg-stone-800 text-white border-stone-800 shadow-xs scale-105'
-                                    : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                                  ? 'bg-stone-800 text-white border-stone-800 shadow-xs scale-105'
+                                  : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
                                   }`}
                               >
                                 <span className={`w-2 h-2 rounded-full ${c.bg}`} />
@@ -1951,8 +2040,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setReviewRatingFilter('all')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${reviewRatingFilter === 'all'
-                        ? 'bg-stone-900 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      ? 'bg-stone-900 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     Todas ({reviews.length})
@@ -1961,8 +2050,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setReviewRatingFilter('5')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === '5'
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     <span>5 ⭐</span>
@@ -1971,8 +2060,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setReviewRatingFilter('4')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === '4'
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     <span>4 ⭐</span>
@@ -1981,8 +2070,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="button"
                     onClick={() => setReviewRatingFilter('with-photo')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${reviewRatingFilter === 'with-photo'
-                        ? 'bg-rose-600 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                       }`}
                   >
                     <Camera className="w-3 h-3" />
@@ -1997,8 +2086,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div
                     key={rev.id}
                     className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between space-y-3 ${deletingReviewId === rev.id
-                        ? 'opacity-40 bg-red-50 border-red-200 pointer-events-none'
-                        : 'bg-stone-50/60 border-stone-200 hover:border-rose-200 hover:bg-white hover:shadow-xs'
+                      ? 'opacity-40 bg-red-50 border-red-200 pointer-events-none'
+                      : 'bg-stone-50/60 border-stone-200 hover:border-rose-200 hover:bg-white hover:shadow-xs'
                       }`}
                   >
                     <div className="space-y-2.5">
@@ -2525,10 +2614,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="fixed top-6 right-4 sm:right-8 z-50 max-w-md w-[calc(100%-2rem)] sm:w-auto animate-bounce-subtle pointer-events-auto">
           <div
             className={`px-4 py-3.5 rounded-2xl shadow-2xl border flex items-start gap-3 backdrop-blur-md transition-all duration-300 ${actionToast.type === 'loading'
-                ? 'bg-stone-900/95 text-white border-rose-500/40 shadow-rose-950/30'
-                : actionToast.type === 'success'
-                  ? 'bg-emerald-900/95 text-white border-emerald-400/50 shadow-emerald-950/30'
-                  : 'bg-red-900/95 text-white border-red-400/50 shadow-red-950/30'
+              ? 'bg-stone-900/95 text-white border-rose-500/40 shadow-rose-950/30'
+              : actionToast.type === 'success'
+                ? 'bg-emerald-900/95 text-white border-emerald-400/50 shadow-emerald-950/30'
+                : 'bg-red-900/95 text-white border-red-400/50 shadow-red-950/30'
               }`}
           >
             <div className="mt-0.5 shrink-0">

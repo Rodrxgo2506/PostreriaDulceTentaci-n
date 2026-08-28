@@ -79,6 +79,36 @@ export interface OrderVerification {
   reviewId?: string;
 }
 
+export type OrderStatus = 'pending' | 'preparing' | 'completed' | 'cancelled';
+
+export interface OrderItemSummary {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+  selectedSize?: string;
+  customDedication?: string;
+}
+
+export interface CustomerOrderRecord {
+  id: string; // e.g. DT-123456
+  customerName: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  deliveryType: 'delivery' | 'pickup' | string;
+  notes?: string;
+  items: OrderItemSummary[];
+  total: number;
+  paymentMethod: string;
+  yapeOpNumber?: string;
+  receiptImageUrl?: string;
+  status: OrderStatus;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface HeroShowcaseCard {
   id: string;
   name: string;

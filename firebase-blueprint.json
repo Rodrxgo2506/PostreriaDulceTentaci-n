@@ -60,6 +60,28 @@
       }
     },
     {
+      "path": "orders",
+      "description": "Pending and completed customer orders with proof of payment",
+      "rules": "allow read, write: if true;",
+      "schema": {
+        "id": "string",
+        "customerName": "string",
+        "phone": "string",
+        "email": "string",
+        "address": "string",
+        "deliveryType": "string",
+        "notes": "string",
+        "items": "array",
+        "total": "number",
+        "paymentMethod": "string",
+        "yapeOpNumber": "string",
+        "receiptImageUrl": "string",
+        "status": "string",
+        "createdAt": "string",
+        "updatedAt": "string"
+      }
+    },
+    {
       "path": "settings",
       "description": "Store configuration and admin password hash",
       "rules": "allow read, write: if true;",
